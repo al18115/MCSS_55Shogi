@@ -22,25 +22,24 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	size_t childIndex = 1;
 	size_t nodeCount = SearchNode::getNodeCount();
 
-	SearchNode** nodes = (SearchNode**)malloc(sizeof(SearchNode*) * nodeCount);
-	josekinode* jn;
-	jn = (josekinode*)malloc(sizeof(josekinode) * nodeCount);
+	SearchNode** nodes = (SearchNode**)malloc(sizeof(SearchNode*) * (nodeCount + 1));
+	josekinode* jn = (josekinode*)malloc(sizeof(josekinode) * nodeCount);
 
 	nodes[0] = history.front();
-	for (index = 0; index < nodeCount; ++index) {
+	while (nodes[index] != NULL) {
 		SearchNode* node = nodes[index];	//nodesから注目ノードを取り出し
 		const size_t childCount = node->children.size();
 		SearchNode::State state = node->getState();
 		if (childCount > 0) {
-			state = SearchNode::State::Expanded;
+			//state = SearchNode::State::Expanded;
 		}
 		jn[index] = josekinode(index, state, node->move.getU(), node->mass, node->getEvaluation(), childCount, childIndex);	//注目ノードをjnに収める
 
 		for (int i = 0; i < childCount; ++i) {	//子ノードをnodesに格納
-			nodes[childIndex + i] = &(node->children[i]);
+			nodes[childIndex++] = &(node->children[i]);
 		}
 
-		childIndex += childCount;	//子ノードの数だけchildIndexを進める
+		++index;
 	}
 
 	//書き出しファイルオープン

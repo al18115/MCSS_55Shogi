@@ -34,7 +34,7 @@ bool JosekiInput::inputSetup() {
 	std::string nodeCountStr;
 	std::getline(ifs, nodeCountStr);
 	std::int64_t nodeCount = std::stol(usi::split(nodeCountStr, ',')[1]);    //infoファイルからノード数を取得
-	SearchNode::setNodeCount(nodeCount);
+	//SearchNode::setNodeCount(nodeCount);
 
 	//positionの取得
 	std::string pos;
@@ -60,7 +60,7 @@ bool JosekiInput::inputSetup() {
 	fread_s(nodesFromFile, sizeof(josekinode) * nodeCount,  sizeof(josekinode), nodeCount, fp);	//定跡本体をバイナリファイルから読み込み
 
 	//nodesForProgram = (SearchNode*)calloc(nodeCount, sizeof(SearchNode));	//プログラム内で使用するnode
-	nodesForProgram = new SearchNode[nodeCount];
+	//nodesForProgram = new SearchNode[nodeCount];
 	//parentsIndex = (size_t*)calloc(nodeCount, sizeof(size_t));
 	parentsIndex = new size_t[nodeCount + 1];
 
@@ -77,8 +77,9 @@ void JosekiInput::josekiInput(SearchTree* tree, size_t firstIndex) {
 	}
 
 	//すぐ下の子ノード達だけ展開する
+	SearchNode* newRoot = new SearchNode;
 	int depth = 0;
-	std::vector<size_t>childrenToThread = yomikomiDepth(firstIndex, depth);
+	std::vector<size_t>childrenToThread = yomikomiDepth(newRoot,firstIndex, depth);
 	if (childrenToThread.size() <= 0) {
 		std::cout << "子ノードがありません。" << std::endl;
 		std::cout << "プログラムを強制終了します。" << std::endl;
@@ -86,26 +87,20 @@ void JosekiInput::josekiInput(SearchTree* tree, size_t firstIndex) {
 	}
 
 	//子ノードの数だけ再帰的に読みこむ
+	SearchNode* list = new SearchNode[childrenToThread.size()];
 	std::vector<std::thread> thr;
-	for (auto c : childrenToThread) {
-		thr.push_back(std::thread(&JosekiInput::yomikomiRecursive, this, c));
+	for (int i = 0; i < childrenToThread.size();++i) {
+		thr.push_back(std::thread(&JosekiInput::yomikomiRecursive, this,&list[i], childrenToThread[i]));
 	}
 	std::cout << "thread num:" << thr.size() << std::endl;
 	for (int i = 0; i < thr.size(); ++i) {
 		thr[i].join();
 	}
 
-	SearchNode* list = new SearchNode[childrenToThread.size()];
-	for (int i = 0; i < childrenToThread.size(); ++i) {
-		SearchNode* cc = &nodesForProgram[childrenToThread[i]];
-		list[i].restoreNode(cc->move, cc->getState(), cc->eval, cc->mass);
-	}
-	nodesForProgram[firstIndex].children.setChildren(list, childrenToThread.size());
+	newRoot->children.setChildren(list, childrenToThread.size());
 
-
-	auto nextRoot = &nodesForProgram[firstIndex];
-	std::cout << "info next pv " << nextRoot->move.toUSI() << " cp " << nextRoot->eval << " depth " << nextRoot->mass << std::endl;
-	tree->setRoot(nextRoot);
+	std::cout << "info next pv " << newRoot->move.toUSI() << " cp " << newRoot->eval << " depth " << newRoot->mass << std::endl;
+	tree->setRoot(newRoot);
 
 	delete[] nodesFromFile;
 	delete[] parentsIndex;
@@ -177,57 +172,55 @@ bool JosekiInput::getBestMove(SearchTree* tree, std::vector<SearchNode*> history
 
 static std::mutex mtx;
 //1行読みこむ。fpをそのまま渡す用
-std::vector<size_t> JosekiInput::yomikomiLine(const size_t index) {
+std::vector<size_t> JosekiInput::yomikomiLine(SearchNode* node, const size_t index) {
 	std::vector<size_t> childIndexes;
-	josekinode node = nodesFromFile[index];
+	josekinode nff = nodesFromFile[index];
 
 
 	size_t tIndex = index;
 
-	Move move = Move(node.move);
+	Move move = Move(nff.move);
 
-	if (node.childCount > 0) {
-		childIndexes.reserve(node.childCount);
-		for (int i = 0; i < node.childCount; ++i) {		//子ノードのインデックスが読み終わるまでループ
-			childIndexes.push_back(node.childIndex + i);
+	if (nff.childCount > 0) {
+		childIndexes.reserve(nff.childCount);
+		for (int i = 0; i < nff.childCount; ++i) {		//子ノードのインデックスが読み終わるまでループ
+			childIndexes.push_back(nff.childIndex + i);
 			parentsIndex[childIndexes.back()] = tIndex;	 //親のインデックスを要素として持つ
 		}
 	}
-	nodesForProgram[tIndex].restoreNode(move, node.st, node.eval, node.mass);
+	node->restoreNode(move, nff.st, nff.eval, nff.mass);
 
 	return childIndexes;
 }
 
 //indexとその子供を再帰的に読みこむ
-void JosekiInput::yomikomiRecursive(const size_t index) {
-	auto children = yomikomiLine(index);
+void JosekiInput::yomikomiRecursive(SearchNode* node, const size_t index) {
+	auto children = yomikomiLine(node,index);
 	if (children.size() == 0) {
 		return;
 	}
 	SearchNode* list = new SearchNode[children.size()];
-	nodesForProgram[index].children.setChildren(list, children.size());
 
 	for (int i = 0; i < children.size();++i) {
-		SearchNode* c = &nodesForProgram[children[i]];
-		list[i].restoreNode(c->move, c->getState(), c->eval, c->mass);
-		yomikomiRecursive(children[i]);
+		yomikomiRecursive(&list[i],children[i]);
 	}
+	node->children.setChildren(list, children.size());
 }
 
 //指定された深さまで読みこみ、子供たちを返す。0で指定されたindexのみ。並列処理はしない
-std::vector<size_t> JosekiInput::yomikomiDepth(const size_t index, const int depth) {
-	auto c = yomikomiLine(index);
+std::vector<size_t> JosekiInput::yomikomiDepth(SearchNode* node, const size_t index, const int depth) {
+	auto c = yomikomiLine(node,index);
 
 	if (depth == 0) {
 		return c;
 	}
-	else {
-		std::vector<size_t>children;
-		for (int i = 0; i < c.size();++i) {
-			auto v = yomikomiDepth(c[i], depth - 1);
-			children.insert(children.end(), v.begin(), v.end());
-		}
-		return children;
-	}
+	//else {
+	//	std::vector<size_t>children;
+	//	for (int i = 0; i < c.size();++i) {
+	//		auto v = yomikomiDepth(c[i], depth - 1);
+	//		children.insert(children.end(), v.begin(), v.end());
+	//	}
+	//	return children;
+	//}
 }
 
