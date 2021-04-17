@@ -28,6 +28,8 @@ public:
 		const SearchNode& operator[] (const std::uint16_t i) const { assert(i < count); return list[i]; }
 		bool empty() const { return count == 0; }
 		std::uint16_t size() const { return count; }
+
+		void setChildren(SearchNode* newList, std::uint16_t newcount);
 	private:
 		static void sort(SearchNode* list, int l, int h);
 		void swap(Children& children);
@@ -92,6 +94,10 @@ public:
 	SearchNode* getBestChild(int funccode)const;
 	double getChildRate(SearchNode* const child, const double T)const;
 	int getMateNum()const;
+
+	State getState() { return status; }
+	void restoreNode(Move move, State state, double eval, double mass);
+	static void setNodeCount(std::int64_t _nodecount) { nodecount = _nodecount; }
 private:
 	void swap(SearchNode& node);
 	Children* purge();

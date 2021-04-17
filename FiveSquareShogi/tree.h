@@ -32,6 +32,8 @@ public:
 	int getMoveNum() const { return history.size() - 1; }
 
 	void foutTree()const;
+
+	void setRoot(SearchNode* newroot);
 private:
 	std::unordered_multimap<std::uint64_t, std::pair<Bammen, uint16_t>> historymap;
 	std::vector<SearchNode*> history;

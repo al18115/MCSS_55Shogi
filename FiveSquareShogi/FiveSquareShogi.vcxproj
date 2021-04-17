@@ -287,6 +287,11 @@
   <ItemGroup>
     <ClCompile Include="agent.cpp" />
     <ClCompile Include="commander.cpp" />
+    <ClCompile Include="jdatabase.cpp" />
+    <ClCompile Include="joseki.cpp" />
+    <ClCompile Include="josekiinput.cpp" />
+    <ClCompile Include="josekioption.cpp" />
+    <ClCompile Include="josekioutput.cpp" />
     <ClCompile Include="kkppt_evaluate.cpp" />
     <ClCompile Include="kkppt_feature.cpp" />
     <ClCompile Include="kkppt_learn.cpp" />
@@ -305,6 +310,8 @@
     <ClCompile Include="move.cpp" />
     <ClCompile Include="move_gen.cpp" />
     <ClCompile Include="node.cpp" />
+    <ClCompile Include="pruning.cpp" />
+    <ClCompile Include="sqlite\sqlite3.c" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="stest.cpp" />
     <ClCompile Include="temperature.cpp" />
@@ -318,6 +325,12 @@
     <ClInclude Include="bitboard.h" />
     <ClInclude Include="commander.h" />
     <ClInclude Include="evaluator.h" />
+    <ClInclude Include="jdatabase.h" />
+    <ClInclude Include="joseki.h" />
+    <ClInclude Include="josekiinput.h" />
+    <ClInclude Include="josekinode.h" />
+    <ClInclude Include="josekioption.h" />
+    <ClInclude Include="josekioutput.h" />
     <ClInclude Include="kkppt_evaluate.h" />
     <ClInclude Include="kkppt_feature.h" />
     <ClInclude Include="kkppt_learn.h" />
@@ -337,6 +350,9 @@
     <ClInclude Include="move_gen.h" />
     <ClInclude Include="node.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="pruning.h" />
+    <ClInclude Include="sqlite\sqlite3.h" />
+    <ClInclude Include="sqlite\sqlite3ext.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="stest.h" />
     <ClInclude Include="temperature.h" />

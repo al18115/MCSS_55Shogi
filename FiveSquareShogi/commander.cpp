@@ -19,6 +19,7 @@ void Commander::execute(const std::string& enginename) {
 			std::cout << "id name " << enginename << std::endl;
 			std::cout << "id author Hiromasa_Iwamoto" << std::endl;
 			coutOption();
+			commander.joseki.coutOption();
 			std::cout << "usiok" << std::endl;
 		}
 		else if (tokens[0] == "setoption") {
@@ -58,6 +59,8 @@ void Commander::execute(const std::string& enginename) {
 			commander.go_alive = false;
 			commander.info_alive = false;
 			commander.agents.pauseSearch();
+			commander.joseki.fin(commander.tree.getHistory());
+			std::cout << "gameoverok" << std::endl;
 		}
 		else if (tokens[0] == "debugsetup") {
 			auto setLeaveNodeCommand = usi::split("setoption name leave_branchNode value true", ' ');
@@ -202,6 +205,9 @@ void Commander::setOption(const std::vector<std::string>& token) {
 		else if (token[2] == "estimate_movesnum") {
 			estimate_movesnum = std::stoi(token[4]);
 		}
+		else {
+			joseki.setOption(token);
+		}
 	}
 }
 
@@ -214,6 +220,8 @@ void Commander::gameInit() {
 	Evaluator::init();
 	agents.setup();
 	info();
+
+	joseki.init(&tree);
 }
 
 void Commander::go(const std::vector<std::string>& tokens) {

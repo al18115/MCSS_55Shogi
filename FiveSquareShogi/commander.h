@@ -2,6 +2,7 @@
 #include "agent.h"
 #include "time_property.h"
 #include <mutex>
+#include "joseki.h"
 
 class Commander {
 public:
@@ -45,6 +46,8 @@ private:
 	//値域 [0,1.0) のランダムな値
 	std::uniform_real_distribution<double> random{ 0, 1.0 };
 	std::mt19937_64 engine{ std::random_device()() };
+
+	Joseki joseki;
 
 	friend class ShogiTest;
 };

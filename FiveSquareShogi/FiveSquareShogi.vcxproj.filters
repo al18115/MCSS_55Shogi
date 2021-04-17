@@ -40,6 +40,15 @@
     <Filter Include="kkppt">
       <UniqueIdentifier>{d13a40e6-623f-41e8-9845-156e4386cda6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\joseki">
+      <UniqueIdentifier>{08812fd3-d69a-416f-be93-6740d3137e9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\joseki">
+      <UniqueIdentifier>{de2623b2-9b86-4c0e-b734-b4dac12b47ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\sqlite">
+      <UniqueIdentifier>{ac214340-c23c-47aa-a333-d334a5cf3c2a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -119,6 +128,27 @@
     </ClCompile>
     <ClCompile Include="temperature.cpp">
       <Filter>ソース ファイル\search</Filter>
+    </ClCompile>
+    <ClCompile Include="jdatabase.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
+    </ClCompile>
+    <ClCompile Include="joseki.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
+    </ClCompile>
+    <ClCompile Include="josekioption.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
+    </ClCompile>
+    <ClCompile Include="sqlite\sqlite3.c">
+      <Filter>ソース ファイル\sqlite</Filter>
+    </ClCompile>
+    <ClCompile Include="josekioutput.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
+    </ClCompile>
+    <ClCompile Include="josekiinput.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
+    </ClCompile>
+    <ClCompile Include="pruning.cpp">
+      <Filter>ソース ファイル\joseki</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +244,33 @@
     </ClInclude>
     <ClInclude Include="temperature.h">
       <Filter>ヘッダー ファイル\search</Filter>
+    </ClInclude>
+    <ClInclude Include="jdatabase.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="joseki.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="josekioption.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite\sqlite3ext.h">
+      <Filter>ソース ファイル\sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite\sqlite3.h">
+      <Filter>ソース ファイル\sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="josekioutput.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="josekiinput.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="pruning.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="josekinode.h">
+      <Filter>ヘッダー ファイル\joseki</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
