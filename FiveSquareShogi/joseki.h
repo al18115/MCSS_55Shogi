@@ -10,6 +10,7 @@
 #include "jdatabase.h"
 #include "josekiinput.h"
 #include "josekioutput.h"
+#include "josekibykyokumen.h"
 
 class Joseki {
 public:

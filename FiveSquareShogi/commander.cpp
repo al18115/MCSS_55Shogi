@@ -77,6 +77,12 @@ void Commander::execute(const std::string& enginename) {
 		else if (tokens[0] == "showBanFigure") {
 			std::cout << commander.tree.getRootPlayer().kyokumen.toBanFigure() << std::endl;
 		}
+		else if (tokens[0] == "josekibykyokumen") {
+			JosekiByKyokumen jbk;
+			//jbk.output(commander.tree.getHistory().front());
+			jbk.input();
+			std::cout << tokens[0] << "ok" << std::endl;
+		}
 		else if (tokens[0] == "quit") {
 			return;
 		}

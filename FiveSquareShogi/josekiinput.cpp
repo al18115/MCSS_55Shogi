@@ -59,9 +59,6 @@ bool JosekiInput::inputSetup() {
 	nodesFromFile = new josekinode[nodeCount];	//定跡の復元に一時的に利用するノード
 	fread_s(nodesFromFile, sizeof(josekinode) * nodeCount,  sizeof(josekinode), nodeCount, fp);	//定跡本体をバイナリファイルから読み込み
 
-	//nodesForProgram = (SearchNode*)calloc(nodeCount, sizeof(SearchNode));	//プログラム内で使用するnode
-	//nodesForProgram = new SearchNode[nodeCount];
-	//parentsIndex = (size_t*)calloc(nodeCount, sizeof(size_t));
 	parentsIndex = new size_t[nodeCount + 1];
 
 	fclose(fp);
