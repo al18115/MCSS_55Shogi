@@ -2,46 +2,57 @@
 #include "josekioption.h"
 #include "node.h"
 #include "kyokumen.h"
+#include "tree.h"
 #include <unordered_map>
 #include <algorithm>
+#include <set>
 
 class JosekiByKyokumen {
 public:
 	JosekiByKyokumen();
 	JosekiOption option;
 
-	void input();
+	void input(SearchTree* tree);
 	void output(SearchNode* root);
 private:
-	void inputBinary();
-	void outputBinary();
-	void outputText();
 	//https ://qiita.com/sokutou-metsu/items/6017a64b264ff023ec72
 
 	//局面分解用
 	struct kyokumendata {
 		SearchNode* node;
-		size_t kyokumenNumber;
-		kyokumendata() {  };
-		kyokumendata(size_t kn, Move move,SearchNode::State s, double eval, double mass) {
-			kyokumenNumber = kn;
-			node = new SearchNode();
-			node->restoreNode(move, s, eval, mass);
+		size_t ID;
+		std::vector<size_t>childrenID;
+		kyokumendata() {}
+		kyokumendata(size_t _ID, SearchNode* _node) {
+			ID = _ID;
+			node = _node;
+		}
+		kyokumendata(size_t _ID, Move move,SearchNode::State state, double eval, double mass) {
+			ID = _ID;
+			node = new SearchNode;
+			node->restoreNode(move, state, eval, mass);
 		}
 	};
 	struct kdkey {
 		Bammen bammen;
-		int moveCount;
+		int hisCount;
 		
-		kdkey() {};
-		kdkey(Bammen b, int mc) {
-			this->bammen = b;
-			moveCount = mc;
+		kdkey() {}
+		kdkey(Bammen _bammen, int _hisCount) {
+			this->bammen = _bammen;
+			hisCount = _hisCount;
+			return;
 		}
+
+		//kdkey operator=(const kdkey& rhs){
+		//	bammen = rhs.bammen;
+		//	hisCount = rhs.hisCount;
+		//	return *this;
+		//}
 
 		bool operator==(const kdkey& rhs) const {
 			const kdkey& lhs = *this;
-			if (lhs.moveCount != rhs.moveCount) {
+			if (lhs.hisCount != rhs.hisCount) {
 				return false;
 			}
 			for (int i = 0; i < lhs.bammen.size(); ++i) {
@@ -56,26 +67,6 @@ private:
 			return !(this->operator==(rhs));
 		}
 	};
-	//指し手の保存用
-	struct mdkey {
-		size_t parentKyokumenNumber;
-		Move move;
-
-		mdkey() {};
-		mdkey(size_t pkn, Move m) {
-			this->parentKyokumenNumber = pkn;
-			this->move = m;
-		}
-
-		bool operator==(const mdkey& rhs) const {
-			const mdkey& lhs = *this;
-			return (lhs.parentKyokumenNumber == rhs.parentKyokumenNumber) && (lhs.move.binary() == rhs.move.binary());
-		}
-
-		bool operator!=(const mdkey& rhs) const {
-			return !(this->operator==(rhs));
-		}
-	};
 	//ハッシュ関係
 	struct Hash {
 		typedef std::size_t result_type;
@@ -84,22 +75,22 @@ private:
 			std::string bytes(reinterpret_cast<const char*>(&key), sizeof(kdkey));
 			return std::hash<std::string>()(bytes);
 		}
-		std::size_t operator()(const mdkey& key) const {
-			std::string bytes(reinterpret_cast<const char*>(&key), sizeof(mdkey));
-			return std::hash<std::string>()(bytes);
-		}
 	};
 
 	//局面保存用
 	struct kyokumensavedata {
+		size_t ID;
 		int moveCount;
 		Bammen bammen;
 		uint16_t moveU;
 		double eval;
 		double mass;
 		int status;
-		kyokumensavedata(int _moveCount, Bammen _bammen, double _eval, double _mass, SearchNode::State _state) {
+		kyokumensavedata(){}
+		kyokumensavedata(size_t _ID,int _moveCount, Bammen _bammen,uint16_t _moveU, double _eval, double _mass, SearchNode::State _state) {
+			ID = _ID;
 			moveCount = _moveCount;
+			moveU = _moveU;
 			bammen = _bammen;
 			eval = _eval;
 			mass = _mass;
@@ -109,16 +100,18 @@ private:
 	//指し手保存用
 	struct movesavedata {
 		size_t parentKyokumenNumber;
-		uint16_t moveU;
 		size_t childKyokmenNumber;
-		movesavedata(size_t _parentKyokumenNumber, Move move, size_t _childKyokumenNumber) {
+		movesavedata() {}
+		movesavedata(size_t _parentKyokumenNumber, size_t _childKyokumenNumber) {
 			parentKyokumenNumber = _parentKyokumenNumber;
-			moveU = move.binary();
 			childKyokmenNumber = _childKyokumenNumber;
 		}
 	};
 
+	void inputBinary();
+	SearchNode* buildTree(SearchNode* node, size_t ID, kyokumendata* kdv);
+	void outputBinary();
+
 	std::unordered_map<kdkey, kyokumendata, Hash> kyokumenMap;
-	std::unordered_map<mdkey, size_t, Hash> moveMap;
-	size_t outputRecursive(int moveCount, Kyokumen kyokumen, SearchNode* node);
+	size_t outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node);
 };

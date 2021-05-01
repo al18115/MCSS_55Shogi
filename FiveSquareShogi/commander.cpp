@@ -77,10 +77,14 @@ void Commander::execute(const std::string& enginename) {
 		else if (tokens[0] == "showBanFigure") {
 			std::cout << commander.tree.getRootPlayer().kyokumen.toBanFigure() << std::endl;
 		}
-		else if (tokens[0] == "josekibykyokumen") {
+		else if (tokens[0] == "josekibykyokumeninput") {
 			JosekiByKyokumen jbk;
-			//jbk.output(commander.tree.getHistory().front());
-			jbk.input();
+			jbk.input(&commander.tree);
+			std::cout << tokens[0] << "ok" << std::endl;
+		}
+		else if (tokens[0] == "josekibykyokumenoutput") {
+			JosekiByKyokumen jbk;
+			jbk.output(commander.tree.getHistory().front());
 			std::cout << tokens[0] << "ok" << std::endl;
 		}
 		else if (tokens[0] == "quit") {

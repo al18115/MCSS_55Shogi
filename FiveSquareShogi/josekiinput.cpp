@@ -149,7 +149,7 @@ bool JosekiInput::getBestMove(SearchTree* tree, std::vector<SearchNode*> history
 		lastIndex = index;
 		for (int j = 0; j < jn.childCount; ++j) {
 			fread_s(&jn, sizeof(josekinode), sizeof(josekinode), 1, fp);
-			if (jn.move == history[i]->move.getU()) {
+			if (jn.move == history[i]->move.binary()) {
 				if (jn.childCount != 0) {
 					index = jn.childIndex;
 				}

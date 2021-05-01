@@ -152,7 +152,7 @@ bool JosekiDataBase::getBestMoveFromDB(std::vector<SearchNode*> his) {
 				break;
 			}
 			//もし一致したらparentIDを変更して次へ
-			if (his[i]->move.getU() == ss.getInt(1)) {
+			if (his[i]->move.binary() == ss.getInt(1)) {
 				parentID = ss.getSize_t(0);
 				break;
 			}
@@ -338,7 +338,7 @@ void JosekiDataBase::createTable() {
 void JosekiDataBase::replaceNodeWithPath(SearchNode* node,std::string path)
 {
 	char sql[BUFFERSIZE];
-	sprintf_s(sql,BUFFERSIZE, "replace into %s (status,move,eval,depth,path) values(%d,%d,%f,%f,\"%s\")", tableName.c_str(), (int)node->getState(), (int)node->move.getU(), (double)node->eval, (double)node->mass, path.c_str());
+	sprintf_s(sql,BUFFERSIZE, "replace into %s (status,move,eval,depth,path) values(%d,%d,%f,%f,\"%s\")", tableName.c_str(), (int)node->getState(), (int)node->move.binary(), (double)node->eval, (double)node->mass, path.c_str());
 	//std::cout << sql << std::endl;
 	char* errorMessage;
 	auto status = sqlite3_exec(db, sql, callback, nullptr, &errorMessage);
@@ -349,12 +349,12 @@ void JosekiDataBase::replaceNodeWithPath(SearchNode* node,std::string path)
 
 size_t JosekiDataBase::replaceNodeWithParent(SearchNode* node, Stmt* insert, Stmt* select, size_t parentId){
 	char sql[BUFFERSIZE];
-	//sprintf_s(sql, BUFFERSIZE, "insert into %s (parentid,move,status,eval,depth) values(%d,%d,%d,%f,%f) on conflict(parentid,move) do update set status = %d , eval = %f , depth = %f", tableName.c_str(), parentId, (int)node->move.getU(), (int)node->getState(), (double)node->eval, (double)node->mass, (int)node->getState(), (double)node->eval, (double)node->mass);
+	//sprintf_s(sql, BUFFERSIZE, "insert into %s (parentid,move,status,eval,depth) values(%d,%d,%d,%f,%f) on conflict(parentid,move) do update set status = %d , eval = %f , depth = %f", tableName.c_str(), parentId, (int)node->move.binary(), (int)node->getState(), (double)node->eval, (double)node->mass, (int)node->getState(), (double)node->eval, (double)node->mass);
 	int rc;
 	//"insert into %s(parentid,move,status,eval,depth) values(?,?,?,?,?) on conflict(parentid,move) do update set status = ? , eval = ? , depth = ?"
 	int n = 1;
 	insert->bind(n, parentId); ++n;
-	insert->bind(n, node->move.getU()); ++n;
+	insert->bind(n, node->move.binary()); ++n;
 	insert->bind(n, (int)node->getState()); ++n;
 	insert->bind(n, node->eval); ++n;
 	insert->bind(n, node->mass); ++n;
@@ -365,7 +365,7 @@ size_t JosekiDataBase::replaceNodeWithParent(SearchNode* node, Stmt* insert, Stm
 	insert->step();
 
 	select->bind(1, parentId);
-	select->bind(2, (int)node->move.getU());
+	select->bind(2, (int)node->move.binary());
 	select->step();
 	size_t id = select->getSize_t(0);
 

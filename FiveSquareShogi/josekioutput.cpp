@@ -33,7 +33,7 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		if (childCount > 0) {
 			//state = SearchNode::State::Expanded;
 		}
-		jn[index] = josekinode(index, state, node->move.getU(), node->mass, node->getEvaluation(), childCount, childIndex);	//注目ノードをjnに収める
+		jn[index] = josekinode(index, state, node->move.binary(), node->mass, node->getEvaluation(), childCount, childIndex);	//注目ノードをjnに収める
 
 		for (int i = 0; i < childCount; ++i) {	//子ノードをnodesに格納
 			nodes[childIndex++] = &(node->children[i]);
@@ -65,7 +65,7 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	std::string moveHis = "";
 	std::string usiHis = "";
 	for (SearchNode* his : history) {
-		moveHis += std::to_string(his->move.getU());
+		moveHis += std::to_string(his->move.binary());
 		moveHis += ",";
 		if (his->move.toUSI() == "nullmove" || his->move.toUSI() == "1a1a") {
 			usiHis += "position startpos moves";

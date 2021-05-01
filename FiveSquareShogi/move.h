@@ -35,7 +35,6 @@ public:
 	}
 	bool operator!=(const Move& rhs) const { return !operator==(rhs); }
 
-	std::uint16_t getU() { return u; }
 private:
 	static unsigned usiToFrom(const std::string& usi, bool teban);
 	static unsigned usiToTo(const std::string& usi);
