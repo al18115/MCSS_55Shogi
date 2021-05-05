@@ -25,6 +25,7 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> histor
 		r += pruningExecuter(node, history);
 	}
 	else {
+		
 		if (pruning_type >= 0) {
 			//実現確率の計算
 			if (select != -1) {
