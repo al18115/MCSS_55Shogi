@@ -80,12 +80,26 @@ void Commander::execute(const std::string& enginename) {
 		else if (tokens[0] == "josekibykyokumeninput") {
 			JosekiByKyokumen jbk;
 			jbk.input(&commander.tree);
+			SearchNode* node = commander.tree.getHistory().front();
 			std::cout << tokens[0] << "ok" << std::endl;
+			
 		}
 		else if (tokens[0] == "josekibykyokumenoutput") {
 			JosekiByKyokumen jbk;
 			jbk.output(commander.tree.getHistory().front());
 			std::cout << tokens[0] << "ok" << std::endl;
+		}
+		else if (tokens[0] == "toUSI") {
+			for (int i = 1; i < tokens.size(); ++i) {
+				std::cout << Move(std::stoi(tokens[i])).toUSI() << std::endl;
+			}
+		}
+		else if (tokens[0] == "toSfen") {
+			Kyokumen kyokumen;
+			for (int i = 4; i < tokens.size(); ++i) {
+				kyokumen.proceed(Move(std::stoi(tokens[i])));
+			}
+			std::cout << kyokumen.toSfen() << std::endl;
 		}
 		else if (tokens[0] == "quit") {
 			return;

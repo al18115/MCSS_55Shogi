@@ -5,7 +5,6 @@
 #include "tree.h"
 #include <unordered_map>
 #include <algorithm>
-#include <set>
 
 class JosekiByKyokumen {
 public:
@@ -22,7 +21,8 @@ private:
 		SearchNode* node;
 		size_t ID;
 		std::vector<size_t>childrenID;
-		kyokumendata() {}
+		int count = 0; //参照された回数を記録
+		kyokumendata() { ID = -1; node = nullptr; }
 		kyokumendata(size_t _ID, SearchNode* _node) {
 			ID = _ID;
 			node = _node;
@@ -33,34 +33,20 @@ private:
 			node->restoreNode(move, state, eval, mass);
 		}
 	};
+
 	struct kdkey {
 		Bammen bammen;
 		int hisCount;
 		
-		kdkey() {}
+		kdkey() { bammen = { 0 }; hisCount = -1; }
 		kdkey(Bammen _bammen, int _hisCount) {
-			this->bammen = _bammen;
+			bammen = _bammen;
 			hisCount = _hisCount;
 			return;
 		}
-
-		//kdkey operator=(const kdkey& rhs){
-		//	bammen = rhs.bammen;
-		//	hisCount = rhs.hisCount;
-		//	return *this;
-		//}
-
 		bool operator==(const kdkey& rhs) const {
 			const kdkey& lhs = *this;
-			if (lhs.hisCount != rhs.hisCount) {
-				return false;
-			}
-			for (int i = 0; i < lhs.bammen.size(); ++i) {
-				if (lhs.bammen[i] != rhs.bammen[i]) {
-					return false;
-				}
-			}
-			return true;
+			return (lhs.hisCount == rhs.hisCount) && (lhs.bammen == rhs.bammen);
 		}
 
 		bool operator!=(const kdkey& rhs) const {
@@ -69,11 +55,12 @@ private:
 	};
 	//ハッシュ関係
 	struct Hash {
-		typedef std::size_t result_type;
-
 		std::size_t operator()(const kdkey& key) const {
-			std::string bytes(reinterpret_cast<const char*>(&key), sizeof(kdkey));
-			return std::hash<std::string>()(bytes);
+			size_t h = key.hisCount;
+			for (int i = 0; i < 35; ++i) {
+				h += (size_t)key.bammen[i] * (2 * (size_t)i + 151);
+			}
+			return h;
 		}
 	};
 
@@ -86,7 +73,7 @@ private:
 		double eval;
 		double mass;
 		int status;
-		kyokumensavedata(){}
+		kyokumensavedata() { ID = -1; moveCount = -1; bammen = { 0 }; moveU = -1; eval = 0; mass = 0; status = -1; }
 		kyokumensavedata(size_t _ID,int _moveCount, Bammen _bammen,uint16_t _moveU, double _eval, double _mass, SearchNode::State _state) {
 			ID = _ID;
 			moveCount = _moveCount;
@@ -101,7 +88,7 @@ private:
 	struct movesavedata {
 		size_t parentKyokumenNumber;
 		size_t childKyokmenNumber;
-		movesavedata() {}
+		movesavedata() { parentKyokumenNumber = -1; childKyokmenNumber = -1; }
 		movesavedata(size_t _parentKyokumenNumber, size_t _childKyokumenNumber) {
 			parentKyokumenNumber = _parentKyokumenNumber;
 			childKyokmenNumber = _childKyokumenNumber;
@@ -109,9 +96,9 @@ private:
 	};
 
 	void inputBinary();
-	SearchNode* buildTree(SearchNode* node, size_t ID, kyokumendata* kdv);
+	void buildTree(SearchNode* node, size_t ID);
 	void outputBinary();
-
 	std::unordered_map<kdkey, kyokumendata, Hash> kyokumenMap;
+	std::unordered_map<size_t, kdkey> keyList;
 	size_t outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node);
 };
