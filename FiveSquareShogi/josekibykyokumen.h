@@ -13,6 +13,7 @@ public:
 
 	void input(SearchTree* tree);
 	void output(SearchNode* root);
+	Move getBestMove(std::vector<SearchNode*>history);
 private:
 	//https ://qiita.com/sokutou-metsu/items/6017a64b264ff023ec72
 
@@ -22,6 +23,7 @@ private:
 		double mass;
 		SearchNode::State state;
 		size_t ID;
+		int count = 0;
 		struct child {
 			uint16_t moveU;
 			size_t ID;
@@ -30,7 +32,7 @@ private:
 		};
 		std::vector<child>children;
 		kyokumendata() :kyokumendata(-1,SearchNode::State::N,-1,-1) {}
-		kyokumendata(size_t _ID, SearchNode::State _state, double _eval, double _mass) :ID(_ID), eval(_eval), mass(_mass), state(_state) {}
+		kyokumendata(size_t _ID, SearchNode::State _state, double _eval, double _mass) :ID(_ID), eval(_eval), mass(_mass), state(_state) { count = 0; }
 	};
 	struct kdkey {
 		Bammen bammen;
@@ -78,10 +80,12 @@ private:
 		movesavedata(size_t _parentKyokumenNumber,uint16_t _moveU, size_t _childKyokumenNumber):parentKyokumenNumber(_parentKyokumenNumber),moveU(_moveU),childKyokmenNumber(_childKyokumenNumber) {}
 	};
 
-	void inputBinary();
+	bool inputBinary();
 	void buildTree(SearchNode* node, size_t ID, uint16_t moveU,bool multiThread);
 	void outputBinary();
 	std::unordered_map<kdkey, kyokumendata, Hash> kyokumenMap;
 	std::unordered_map<size_t, kdkey> keyList;
+	kyokumendata* kyokumenDataArray;
 	void outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node,size_t *childID,bool multiThread);
+
 };

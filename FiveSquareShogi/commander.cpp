@@ -85,8 +85,7 @@ void Commander::execute(const std::string& enginename) {
 			
 		}
 		else if (tokens[0] == "josekibykyokumenoutput") {
-			JosekiByKyokumen jbk;
-			jbk.output(commander.tree.getHistory().front());
+			commander.joseki.fin(commander.tree.getHistory());
 			std::cout << tokens[0] << "ok" << std::endl;
 		}
 		else if (tokens[0] == "toUSI") {

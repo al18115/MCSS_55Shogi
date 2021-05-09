@@ -1,6 +1,7 @@
 ﻿#include "josekioption.h"
 #include "usi.h"
 #include <iostream>
+#include <time.h>
 
 JosekiOption::josekioption::josekioption(std::string name, std::string type, std::string value) {
 	this->name = name;
@@ -73,3 +74,9 @@ bool JosekiOption::getC(std::string name)
 	return optionlist[name].value == "true";
 }
 
+std::string JosekiOption::getYMHM() {
+	time_t now = time(NULL);
+	struct tm* pnow = (struct tm*)malloc(sizeof(struct tm));
+	localtime_s(pnow ,&now);
+	return std::to_string(pnow->tm_year + 1900) + std::to_string(pnow->tm_mon + 1) + std::to_string(pnow->tm_mday) + std::to_string(pnow->tm_hour) + std::to_string(pnow->tm_min) + std::to_string(pnow->tm_sec);
+}

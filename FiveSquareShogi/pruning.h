@@ -1,17 +1,19 @@
 ﻿#pragma once
 #include "node.h"
+#include "tree.h"
 
 class Pruning {
     //枝刈り
 public:
     //指定されたノードから下を全て枝刈りする。返り値は刈ったノードの数
     size_t pruning(SearchNode* root);
+    //指定されたノードの探索深さ指標を基準とし、枝刈りを行う。
+    static void pruningMass(SearchNode* node,double mass);
 private:
     //指定されたノードに対して再帰的に枝刈りを行う
     size_t partialPruning(SearchNode* node, std::vector<SearchNode*>history, double select = -1, int depth = 10, double backupRate = 1);
     //実際の枝刈り処理を行う
-    size_t pruningExecuter(SearchNode* node, std::vector<SearchNode*>history);
-    //枝刈りを行うものの設定を呼び出す関数
+    static void pruningExecuter(SearchNode* node);
     bool isPruning(SearchNode* node, double select = 1, int depth = 10, double backupRate = 1);
     ////深さバックアップ温度再計算用の温度
     //double T_d = 100;

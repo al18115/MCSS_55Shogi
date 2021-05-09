@@ -15,6 +15,7 @@ public:
 	int getI(std::string name);
 	double getD(std::string name);
 	bool getC(std::string name);
+	static std::string getYMHM();
 private:
 	struct josekioption {
 		std::string name;

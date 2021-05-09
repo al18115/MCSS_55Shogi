@@ -2,6 +2,13 @@
 #include <fstream>
 #include "josekibykyokumen.h"
 #include "usi.h"
+#include "pruning.h"
+
+#define FILENAME (option.getS("joseki_by_kyokumen_folder") + "/" + option.getS("joseki_by_kyokumen_filename"))
+#define FILENAMETEXT (option.getS("joseki_by_kyokumen_folder") + "/" + option.getS("joseki_by_kyokumen_filenametext"))
+#define FILERENAME (option.getS("joseki_by_kyokumen_folder") + "/" + JosekiOption::getYMHM() + option.getS("joseki_by_kyokumen_filename"))
+#define FILERENAMETEXT (option.getS("joseki_by_kyokumen_folder") + "/" + JosekiOption::getYMHM() + option.getS("joseki_by_kyokumen_filenametext"))
+
 
 static class StopWatch {
 public:
@@ -37,45 +44,66 @@ private:
 };
 
 JosekiByKyokumen::JosekiByKyokumen(){
-	option.addOption("joseki_by_kyokumen_on", "check", "true");
-	option.addOption("joseki_by_kyokumen_multithread", "check", "true");
+	option.addOption("joseki_by_kyokumen_on", "check", "false");
+	option.addOption("joseki_by_kyokumen_folder", "string", "joseki");
+	option.addOption("joseki_by_kyokumen_filename", "string", "jdk.bin");
+	option.addOption("joseki_by_kyokumen_filenametext", "string", "jdk.txt");
+	option.addOption("joseki_by_kyokumen_text_output_on", "check", "false");
+	option.addOption("joseki_by_kyokumen_multithread", "check", "false");
+	option.addOption("joseki_by_kyokumen_mass_rate", "string", "0.5");
+	option.addOption("joseki_by_kyokumen_rename", "check", "false");
 }
 
+std::atomic<size_t> nodeCounter = 0;
 void JosekiByKyokumen::input(SearchTree *tree)
 {
+	bool inputOK = false;
+	if (!option.getC("joseki_by_kyokumen_on")) {
+		return;
+	}
+
 	StopWatch sw;
 	sw.start();
-	inputBinary();
+	inputOK = inputBinary();
 	sw.print("inputBinaly:");
 	SearchNode* root = new SearchNode;
 
-	buildTree(root, 0, Move().binary(), option.getC("joseki_by_kyokumen_multithread"));
+	if (inputOK) {
+		buildTree(root, 0, Move().binary(), option.getC("joseki_by_kyokumen_multithread"));
 
-	sw.print("buildTree:");
-	tree->setRoot(root);
+		sw.print("buildTree:");
+		tree->setRoot(root);
+
+		if (option.getC("joseki_by_kyokumen_rename")) {
+			auto r = std::rename(FILENAME.c_str(), FILERENAME.c_str());
+			r = std::rename(FILENAMETEXT.c_str(), FILERENAMETEXT.c_str());
+		}
+	}
+
+	std::cout << "node count : " << nodeCounter << std::endl;
 }
 
-void JosekiByKyokumen::inputBinary()
+bool JosekiByKyokumen::inputBinary()
 {
 	FILE* fp;
-	if (fopen_s(&fp, "joseki/testKyokumen.bin", "rb") != 0) {
+	if (fopen_s(&fp, FILENAME.c_str(), "rb") != 0) {
 		std::cout << "file open error." << std::endl;
-		return;
+		return false;
 	}
 
 	//局面情報の読み込み
 	size_t kyokumenCount;
-	fread(&kyokumenCount, sizeof(size_t), 1, fp);
+	fread_s(&kyokumenCount, sizeof(size_t),sizeof(size_t), 1, fp);
 	std::vector<kyokumensavedata>ksd;
 	ksd.resize(kyokumenCount);
-	fread(&ksd[0], sizeof(kyokumensavedata), kyokumenCount, fp);
+	fread_s(&ksd[0], sizeof(kyokumensavedata) * kyokumenCount, sizeof(kyokumensavedata), kyokumenCount, fp);
 
 	//指し手情報の読み込み
 	size_t childrenCount;
-	fread(&childrenCount, sizeof(size_t), 1, fp);
+	fread_s(&childrenCount,sizeof(size_t), sizeof(size_t), 1, fp);
 	std::vector<movesavedata> msd;
 	msd.resize(childrenCount);
-	fread(&msd[0], sizeof(movesavedata), childrenCount, fp);
+	fread_s(&msd[0], sizeof(movesavedata) * childrenCount, sizeof(movesavedata), childrenCount, fp);
 
 	fclose(fp);
 
@@ -85,26 +113,42 @@ void JosekiByKyokumen::inputBinary()
 		kyokumenChildren[msd[i].parentKyokumenNumber].push_back(kyokumendata::child(msd[i].moveU,msd[i].childKyokmenNumber));
 	}
 
+	kyokumenDataArray = (kyokumendata*)malloc(sizeof(kyokumendata) * kyokumenCount);
 	for (size_t i = 0; i < kyokumenCount; ++i) {
 		const auto& ksdi = ksd[i];
-		auto key = kdkey(ksdi.bammen, ksdi.moveCount);
+		kdkey key = kdkey(ksdi.bammen, ksdi.moveCount);
 		kyokumenMap[key] = kyokumendata(ksdi.ID, (SearchNode::State)ksdi.status, ksdi.eval, ksdi.mass);
-		kyokumenMap[key].children = kyokumenChildren[ksdi.ID];
+		if (ksdi.status == (int)SearchNode::State::E) {
+			kyokumenMap[key].children = kyokumenChildren[ksdi.ID];
+		}
 		keyList[ksdi.ID] = key;
+		if (kyokumenDataArray != NULL) {
+			kyokumenDataArray[ksdi.ID] = kyokumenMap[key];
+		}
+		else {
+			std::cout << "メモリの確保に失敗しました" << std::endl;
+			exit(1);
+		}
 	}
 
+	return true;
 }
 
-void JosekiByKyokumen::buildTree(SearchNode* node, size_t ID,uint16_t moveU,bool multiThread)
+std::atomic<int> threadCounter = 0;
+void JosekiByKyokumen::buildTree(SearchNode* node, size_t ID, uint16_t moveU, bool multiThread)
 {
-	const auto& km = kyokumenMap[keyList[ID]];
-	node->restoreNode(Move(moveU), km.state, km.eval, km.mass);
+	++nodeCounter;
+
+	const auto& km = kyokumenDataArray[ID];
+	//const auto& km = kyokumenMap[keyList[ID]];
+	auto state = km.state;
 	size_t childCount = km.children.size();
 	SearchNode* list = new SearchNode[childCount];
 	if (multiThread) {
 		std::vector<std::thread>th;
+		threadCounter.store(threadCounter + childCount);
 		for (size_t i = 0; i < childCount; ++i) {
-			th.push_back(std::thread(&JosekiByKyokumen::buildTree, this, &(list[i]), km.children[i].ID, km.children[i].moveU,false));
+			th.push_back(std::thread(&JosekiByKyokumen::buildTree, this, &(list[i]), km.children[i].ID, km.children[i].moveU, false));
 		}
 		for (size_t i = 0; i < th.size(); ++i) {
 			th[i].join();
@@ -112,27 +156,65 @@ void JosekiByKyokumen::buildTree(SearchNode* node, size_t ID,uint16_t moveU,bool
 	}
 	else {
 		for (size_t i = 0; i < childCount; ++i) {
-			buildTree(&(list[i]), km.children[i].ID, km.children[i].moveU,false);
+			buildTree(&(list[i]), km.children[i].ID, km.children[i].moveU, 0);
 		}
 	}
-	node->children.setChildren(list,childCount);
+
+	node->children.setChildren(list, childCount);
+	node->restoreNode(Move(moveU), state, km.eval, km.mass);
 }
 
 void JosekiByKyokumen::output(SearchNode* root)
 {
+	if (!option.getC("joseki_by_kyokumen_on")) {
+		return;
+	}
+
+	std::cout << "枝刈りを行います" << std::endl;
+	double maxMass = root->mass;
+	for (int i = 0; i < root->children.size(); ++i) {
+		if (maxMass < root->children[i].mass) {
+			maxMass = root->children[i].mass;
+		}
+	}
+	std::vector<std::thread>th;
+	for (int i = 0; i < root->children.size(); ++i) {
+		th.push_back(std::thread(Pruning::pruningMass,&(root->children[i]), maxMass * option.getD("joseki_by_kyokumen_mass_rate")));
+	}
+	for (int i = 0; i < root->children.size(); ++i) {
+		th[i].join();
+	}
+	std::cout << "枝刈り終了" << std::endl;
+
 	StopWatch sw;
 	sw.start();
 
 	std::vector<std::string> usitokens = { "position","startpos" };
 	Kyokumen kyokumen(usitokens);
 	size_t rootID = 0;
-	outputRecursive(0, kyokumen, root,&rootID, option.getC("joseki_by_kyokumen_multithread"));
+	outputRecursive(0, kyokumen, root,&rootID,false);
 
 	sw.print("outputRecurcive:");
 
 	outputBinary();
 
 	sw.print("outputBinary:");
+
+	std::ofstream ofs("joseki\\node.txt");
+	ofs << SearchNode::getNodeCount() << std::endl;
+	ofs.close();
+}
+
+Move JosekiByKyokumen::getBestMove(std::vector<SearchNode*> history)
+{
+	Kyokumen kyokumen;
+	Move best;
+	for (int i = 1; i < history.size(); ++i) {
+		kyokumen.proceed(history[i]->move);
+	}
+	kdkey key = kdkey(kyokumen.getBammen(), history.size() - 1);
+	//for(int i = 0;)
+	return false;
 }
 
 
@@ -153,16 +235,15 @@ void JosekiByKyokumen::outputBinary() {
 				itr->second.state
 			)
 		);
-		for (int i = 0; i < itr->second.children.size();++i) {
-			msd.push_back(movesavedata(itr->second.ID,itr->second.children[i].moveU, itr->second.children[i].ID));
-		}
-		if (itr->second.ID == 0) {
-			std::cout << std::endl;
+		if (itr->second.state == SearchNode::State::Expanded) {
+			for (int i = 0; i < itr->second.children.size(); ++i) {
+				msd.push_back(movesavedata(itr->second.ID, itr->second.children[i].moveU, itr->second.children[i].ID));
+			}
 		}
 	}
 	
 	FILE* fp;
-	if (fopen_s(&fp, "joseki/testkyokumen.bin", "wb") != 0) {
+	if (fopen_s(&fp, FILENAME.c_str(), "wb") != 0) {
 		std::cout << "file open error." << std::endl;
 		return;
 	}
@@ -177,13 +258,19 @@ void JosekiByKyokumen::outputBinary() {
 
 	fclose(fp);
 
-	bool outputtexton = true;
-	if (outputtexton) {
+	if (option.getC("joseki_by_kyokumen_text_output_on")) {
 		std::vector<std::string>outputs;
 		outputs.resize(kyokumenCount);
+
+		size_t nodeCount = 0;
+
 		for (size_t i = 0; i < kyokumenCount; ++i) {
 			outputs[ksd[i].ID] = "";
 			outputs[ksd[i].ID] += std::to_string(ksd[i].ID) + "\t";
+
+			outputs[ksd[i].ID] += std::to_string(kyokumenMap[keyList[ksd[i].ID]].count) + "\t";
+			nodeCount += kyokumenMap[keyList[ksd[i].ID]].count;
+
 			outputs[ksd[i].ID] += Kyokumen(ksd[i].bammen, (ksd[i].moveCount + 1) % 2).toSfen() + "\t";
 			outputs[ksd[i].ID] += std::to_string(ksd[i].moveCount) + "\t";
 			outputs[ksd[i].ID] += std::to_string(ksd[i].status) + "\t";
@@ -197,7 +284,8 @@ void JosekiByKyokumen::outputBinary() {
 			Move m = Move(msd[i].moveU);
 			outputs[ID] += std::to_string(ID) + "\t"+ std::to_string(m.binary()) + "(" + m.toUSI() + ")" + "\t"+std::to_string(childID)  + "\n";
 		}
-		std::ofstream ofs("joseki/testkyokumen.txt");
+		std::ofstream ofs(FILENAMETEXT);
+		ofs << "nodeCount:" << nodeCount << std::endl;
 		ofs << "kyokumenCount:" << kyokumenCount << std::endl;
 		ofs << "childrenCount:" << childrenCount << std::endl;
 		for (size_t i = 0; i < kyokumenCount; ++i) {
@@ -207,11 +295,13 @@ void JosekiByKyokumen::outputBinary() {
 	}
 }
 
-void JosekiByKyokumen::outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node,size_t *ID,bool multiThread)
+void JosekiByKyokumen::outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node, size_t* ID, bool multiThread)
 {
+	kyokumen.proceed(node->move);
+
 	kdkey key(kyokumen.getBammen(), hisCount);
-	
-	bool duplicate,checkChildren = true;
+
+	bool duplicate, checkChildren = true;
 
 	auto itr = kyokumenMap.find(key);
 	duplicate = (itr != kyokumenMap.end());
@@ -224,9 +314,10 @@ void JosekiByKyokumen::outputRecursive(int hisCount, Kyokumen kyokumen, SearchNo
 		if (kd->mass < node->mass) {
 			kd->eval = node->eval;
 			kd->mass = node->mass;
+			kd->state = node->getState();
 		}
 		else {
-			checkChildren = false;
+			//checkChildren = false;
 		}
 	}
 	else {
@@ -237,29 +328,30 @@ void JosekiByKyokumen::outputRecursive(int hisCount, Kyokumen kyokumen, SearchNo
 		kd = &kyokumenMap[key];
 		keyList[*ID] = key;
 	}
-
-	if (checkChildren = false) {
-		if(!duplicate) kd->children.resize(node->children.size());
-		if (multiThread) {
-			std::vector<std::thread>th;
-			for (int i = 0; i < node->children.size(); ++i) {
-				SearchNode* child = &(node->children[i]);
-				Kyokumen childKyokumen = Kyokumen(kyokumen);
-				childKyokumen.proceed(child->move);
-				th.push_back(std::thread(&JosekiByKyokumen::outputRecursive, this, hisCount + 1, childKyokumen, child, &(kd->children[i].ID), false));
-				kd->children[i].moveU = child->move.binary();
-			}
-			for (int i = 0; i < th.size(); ++i) {
-				th[i].join();
-			}
+	kd->count++;
+	if (node->children.size() > 0) {
+		if (kd->children.size() == 0) {
+			kd->children.resize(node->children.size());
 		}
-		else {
-			for (int i = 0; i < node->children.size(); ++i) {
-				SearchNode* child = &(node->children[i]);
-				Kyokumen childKyokumen = Kyokumen(kyokumen);
-				childKyokumen.proceed(child->move);
-				outputRecursive(hisCount + 1, childKyokumen, child,&(kd->children[i].ID),false);
-				kd->children[i].moveU = child->move.binary();
+
+		if (checkChildren) {
+			if (false) {
+				std::vector<std::thread>th;
+				for (int i = 0; i < node->children.size(); ++i) {
+					SearchNode* child = &(node->children[i]);
+					th.push_back(std::thread(&JosekiByKyokumen::outputRecursive, this, hisCount + 1, kyokumen, child, &(kd->children[i].ID), false));
+					kd->children[i].moveU = child->move.binary();
+				}
+				for (int i = 0; i < th.size(); ++i) {
+					th[i].join();
+				}
+			}
+			else {
+				for (int i = 0; i < node->children.size(); ++i) {
+					SearchNode* child = &(node->children[i]);
+					outputRecursive(hisCount + 1, kyokumen, child, &(kd->children[i].ID), false);
+					kd->children[i].moveU = child->move.binary();
+				}
 			}
 		}
 	}

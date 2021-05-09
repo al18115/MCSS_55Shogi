@@ -12,6 +12,17 @@ size_t Pruning::pruning(SearchNode* root) {
 	return r;
 }
 
+void Pruning::pruningMass(SearchNode* node, double mass){
+	if (node->mass < mass) {
+		pruningExecuter(node);
+	}
+	else {
+		for (int i = 0; i < node->children.size(); ++i) {
+			pruningMass(&node->children[i], mass);
+		}
+	}
+}
+
 size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> history, double select, int depth, double backupRate) {
 	size_t r = 0;
 	//末端ならその場で終了
@@ -22,7 +33,7 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> histor
 	history.push_back(node);
 	//枝刈り判定を行う
 	if (isPruning(node, select, depth, backupRate)) {
-		r += pruningExecuter(node, history);
+		pruningExecuter(node);
 	}
 	else {
 		
@@ -73,12 +84,11 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> histor
 	return r;
 }
 
-size_t Pruning::pruningExecuter(SearchNode* node, std::vector<SearchNode*> history) {
-	node->children.clear();
-	if (node->getState() != SearchNode::State::Terminal) {
-		node->restoreNode(node->move,SearchNode::State::NotExpanded,node->eval,node->mass);
+void Pruning::pruningExecuter(SearchNode* node) {
+	if (node->children.size() > 0) {
+		node->children.clear();
+		node->restoreNode(node->move, SearchNode::State::NotExpanded, node->eval, node->mass);
 	}
-	return 0;
 }
 
 bool Pruning::isPruning(SearchNode* node, double select, int depth, double backupRate) {
