@@ -309,6 +309,7 @@
     <ClCompile Include="learn_method.cpp" />
     <ClCompile Include="learn_util.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MemMapFile.cpp" />
     <ClCompile Include="move.cpp" />
     <ClCompile Include="move_gen.cpp" />
     <ClCompile Include="node.cpp" />
@@ -349,6 +350,7 @@
     <ClInclude Include="learner.h" />
     <ClInclude Include="learn_method.h" />
     <ClInclude Include="learn_util.h" />
+    <ClInclude Include="MemMapFile.h" />
     <ClInclude Include="move.h" />
     <ClInclude Include="move_gen.h" />
     <ClInclude Include="node.h" />

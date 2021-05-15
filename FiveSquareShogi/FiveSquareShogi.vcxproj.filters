@@ -153,6 +153,9 @@
     <ClCompile Include="josekibykyokumen.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="MemMapFile.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kppt_evaluate.h">
@@ -277,6 +280,9 @@
     </ClInclude>
     <ClInclude Include="josekibykyokumen.h">
       <Filter>ヘッダー ファイル\joseki</Filter>
+    </ClInclude>
+    <ClInclude Include="MemMapFile.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

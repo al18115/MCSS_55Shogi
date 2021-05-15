@@ -182,6 +182,7 @@ bool JosekiDataBase::getBestMoveFromDB(std::vector<SearchNode*> his) {
 	}
 
 	close();
+	return bestmoveExist;
 }
 
 void JosekiDataBase::josekiInputFromDB(SearchTree* tree) {
