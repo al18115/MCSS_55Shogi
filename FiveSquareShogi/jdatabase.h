@@ -7,6 +7,7 @@
 class JosekiDataBase {
 public:
 private:
+	//sql文に関した入出力用クラス
 	class Stmt{
 	public:
 		Stmt(sqlite3 * db, std::string sql);
@@ -25,6 +26,8 @@ private:
 	private:
 		sqlite3_stmt* stmt = nullptr;
 	};
+
+	//sql文で保存するノードのデータ
 	struct nodedata {
 		size_t id;
 		Move move;
@@ -73,7 +76,7 @@ public:
 private:
 	void open();
 	void close();
-	sqlite3* db;
+	sqlite3* db = nullptr;
 	std::string tableName;
 	bool isOpen = false;
 	const char* tableContentText = 

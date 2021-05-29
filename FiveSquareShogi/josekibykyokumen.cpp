@@ -3,12 +3,257 @@
 #include "josekibykyokumen.h"
 #include "usi.h"
 #include "pruning.h"
+#include "MMapVector.h"
+#include "agent.h"
 
 #define FILENAMEBASE (option.getS("joseki_by_kyokumen_folder") + "/" + option.getS("joseki_by_kyokumen_filename"))
 #define FILENAME(add) (FILENAMEBASE + "_" +  add)
 #define FILERENAME(add) (FILENAME(JosekiOption::getYMHM() + "_" + add))
+#define CHECKJOSEKIISON {if(!option.getC("joseki_by_kyokumen_on"))return;}
 
+//https ://qiita.com/sokutou-metsu/items/6017a64b264ff023ec72
+//ハッシュ関係
+struct Hash {
+	std::size_t operator()(const JosekiByKyokumen::kdkey& key) const {
+		//ハッシュ値の計算方法：手数カウントと盤面の各マスに素数を掛けて総和をとる。
+		constexpr size_t prime[] = {
+			3313,3319,3323,3329,3331,
+			3343,3347,3359,3361,3371,
+			3373,3389,3391,3407,3413,
+			3433,3449,3457,3461,3463,
+			3467,3469,3491,3499,3511,
+			3517,3527,3529,3533,3539,
+			3541,3547,3557,3559,3571
+		};
+		size_t h = (size_t)key.hisCount * 3307;
+		for (int i = 0; i < 35; ++i) {
+			h += (size_t)key.bammen[i] * (prime[i]);
+		}
+		return h;
+	}
+};
+//局面保存用
+struct kyokumensavedata {
+	double eval;
+	double mass;
+	int status;
+	kyokumensavedata() :kyokumensavedata(-1, -1, SearchNode::State::N) {}
+	kyokumensavedata(double _eval, double _mass, SearchNode::State _state) :eval(_eval), mass(_mass), status((int)_state) {}
+};
+//指し手保存用
+struct movesavedata {
+	uint16_t moveU;
+	size_t childKyokmenNumber;
+	movesavedata() :movesavedata(-1, -1) {}
+	movesavedata(uint16_t _moveU, size_t _childKyokumenNumber) :moveU(_moveU), childKyokmenNumber(_childKyokumenNumber) {}
+};
+//指し手の保存位置保存用
+struct childposition {
+	size_t position;
+	size_t count;
+};
 
+//初期局面での手数カウント
+const int firstHisCount = 1;
+//手数カウントを受け取り、先手かどうかを返す
+bool isSente(const int hisCount) { return (hisCount % 2) == firstHisCount; };
+
+//探索木からもらったノードなどの各種データを、入出力するクラス
+class IOJoseki {
+public:
+	//4つのファイル名を受け取り初期化
+	inline void init(std::string filenameNode, std::string filenameID, std::string filenameChildPosition, std::string filenameMoves) {
+		if (isOpen) {
+			return;
+		}
+		isOpen = true;
+		std::cout << "filenameNode:" << filenameNode << std::endl;
+		mv.node.init(filenameNode);
+		mv.childPosition.init(filenameChildPosition);
+		mv.moves.init(filenameMoves);
+		mv.id.init(filenameID);
+		//全局面IDの取得
+		loadIDFromFile();
+	}
+	//指定されたキーのIDを取得し、ノードを格納
+	inline void set(const JosekiByKyokumen::kdkey key, const SearchNode* node) {
+		//ファイルを書き換えるかどうか
+		bool updateF = false;
+		kyokumensavedata ksd;
+		//IDの取得
+		auto ID = getID(key);
+		//保存済みのノードをロード
+		mv.node.read(ID, ksd);
+		//保存されていた格納状態を取得しておく
+		auto state = (SearchNode::State)ksd.status;
+
+		//保存されていたノードより深ければ格納
+		if (ksd.mass < node->mass || (int)node->mass == 0) {
+			ksd.eval = node->eval;
+			ksd.mass = node->mass;
+			if (!node->isLeaf()) {
+				ksd.status = (int)node->getState();
+			}
+			updateF = true;
+		}
+
+		//定跡に子ノードのIDが格納されていなければ格納
+		if (state == SearchNode::State::NotExpanded && node->getState() == SearchNode::State::Expanded) {
+			childposition c;
+			const auto& children = node->children;
+			//子の保存の最初の位置を設定
+			c.position = mv.moves.getCount();
+			//子の数を保存
+			c.count = children.size();
+
+			//子の保存のために、親局面と子の手数カウントを保存
+			//const auto parentKyokumen = Kyokumen(key.bammen, isSente(key.hisCount));
+			const SearchPlayer parentPlayer(Kyokumen(key.bammen, isSente(key.hisCount)));
+			const auto nextHisCount = key.hisCount + 1;
+			for (int i = 0; i < c.count; ++i) {
+				const auto& child = children[i];
+				SearchPlayer player = parentPlayer;
+				//子の指し手で局面を進める
+				player.proceed(child.move);
+				//進めた局面でIDを取得
+				size_t childID = getID(JosekiByKyokumen::kdkey(player.kyokumen.getBammen(), nextHisCount));
+
+				//子のIDをファイルに保存
+				mv.moves.write(c.position + i, movesavedata(child.move.binary(), childID));
+			}
+			//子の保存位置と数を保存
+			mv.childPosition.write(ID, c);
+
+			updateF = true;
+		}
+
+		//定跡に上書きが必要なら上書きする
+		if (updateF) {
+			mv.node.write(ID, ksd);
+		}
+	}
+	//ノードに値を格納する
+	inline void getNode(size_t ID, SearchNode* node, Move move) {
+		kyokumensavedata ksd;
+		//ノードデータの読み込み
+		mv.node.read(ID, ksd);
+		if (move.binary() == Move().binary()) {
+			move = node->move;
+		}
+		//ノードのほうが値が大きければノードのデータは変更しない
+		if (node->mass >= ksd.mass) {
+			ksd.mass = node->mass;
+			ksd.eval = node->eval;
+			ksd.status = (int)node->getState();
+		}
+		node->restoreNode(move, (SearchNode::State)ksd.status, ksd.eval, ksd.mass);
+	}
+	//ノードの子ノードのIDを取得する
+	inline std::vector<movesavedata> getChildren(const size_t ID) {
+		childposition c;
+		std::vector<movesavedata>children;
+		//子ノード情報が保存されている位置を取得
+		mv.childPosition.read(ID, c);
+		children.resize(c.count);
+		//格納された位置に順に子ノードのID並んでいるので、それを取得
+		for (int i = 0; i < c.count; ++i) {
+			mv.moves.read(c.position + i, children[i]);
+		}
+		return children;
+	}
+	//historyから現在の局面を特定し、そのIDを返す。
+	inline size_t getKyokumenID(const std::vector<SearchNode*>& history) {
+		Kyokumen kyokumen = Kyokumen();
+		int hisCount = firstHisCount;
+		for (int i = 1; i < history.size(); ++i) {
+			kyokumen.proceed(history[i]->move);
+			++hisCount;
+		}
+		return getID(JosekiByKyokumen::kdkey(kyokumen.getBammen(), hisCount));
+	}
+	//ノードの情報を出力
+	inline void printKyokumen(size_t ID) {
+		kyokumensavedata ksd;
+		childposition c;
+		JosekiByKyokumen::kdkey key;
+		movesavedata msd;
+		mv.node.read(ID, ksd);
+		mv.id.read(ID, key);
+		mv.childPosition.read(ID, c);
+
+		std::cout << "ID:" << ID << std::endl;
+		std::cout << "sfen:" << Kyokumen(key.bammen, isSente(key.hisCount)).toSfen() << std::endl;
+		std::cout << "hisCount:" << key.hisCount << std::endl;
+		std::cout << "eval:" << ksd.eval << std::endl;
+		std::cout << "mass:" << ksd.mass << std::endl;
+		std::cout << "status:" << ksd.status << std::endl;
+		std::cout << ":children:" << std::endl;
+
+		for (int i = 0; i < c.count; ++i) {
+			mv.moves.read(c.position + i, msd);
+			std::cout << "ID:" << msd.childKyokmenNumber << "\t" << "move:" << msd.moveU << "(" << Move(msd.moveU).toUSI() << ")" << std::endl;
+		}
+	}
+
+	void fin() {
+		mv.fin();
+		isOpen = false;
+	}
+private:
+	bool isOpen = false;
+	//ファイル入出力クラス集
+	struct MMapVectors {
+		MMapVector<kyokumensavedata> node;
+		MMapVector<JosekiByKyokumen::kdkey> id;
+		MMapVector<movesavedata>moves;
+		MMapVector<childposition>childPosition;
+		void fin() {
+			node.fin();
+			id.fin();
+			moves.fin();
+			childPosition.fin();
+		}
+	}mv;
+	//局面集を保存しておくunordered_map。最初にすべて読み込んでおく
+	std::unordered_map<JosekiByKyokumen::kdkey, size_t, Hash>keys;
+	//ファイルからIDを全部読み込み
+	void loadIDFromFile() {
+		if (!keys.empty()) {
+			return;
+		}
+		size_t count = mv.id.getCount();
+		JosekiByKyokumen::kdkey* keyData = new JosekiByKyokumen::kdkey[count];
+		mv.id.allLoad((void*)(keyData));
+		int tempSize = keys.size();
+		for (size_t i = 0; i < count; ++i) {
+			keys[keyData[i]] = i;
+			if (keys.size() == tempSize) {
+				std::cout << Kyokumen(keyData[i].bammen, isSente(keyData[i].hisCount)).toSfen() << std::endl;
+				int n = 0;
+			}
+			tempSize = keys.size();
+		}
+		std::cout << "key load ok:" << count << std::endl;
+		delete[] keyData;
+	}
+	//keyからIDを取得。keyが今まで登録されていなければ、IDを新たに付与する。
+	size_t getID(const JosekiByKyokumen::kdkey key)
+	{
+		size_t ID;
+		auto itr = keys.find(key);
+		if (itr == keys.end()) {
+			ID = keys.size();
+			keys[key] = ID;
+			mv.id.write(ID, key);
+		}
+		else {
+			ID = keys[key];
+		}
+		return ID;
+	}
+}iojoseki;
+
+//時間計測用のクラス
 static class StopWatch {
 public:
 	void start() {
@@ -42,65 +287,8 @@ private:
 	std::chrono::system_clock::time_point starttime;
 };
 
-
-template<typename T>
-static bool freadVector(std::string filename, std::vector<T>& vec) {
-	FILE* fp;
-	size_t size;
-
-	auto err = fopen_s(&fp, filename.c_str(), "rb");
-
-	if (err) {
-		std::cout << filename << " is not exist." << std::endl;
-		return false;
-	}
-
-	std::cout << "input from " << filename << std::endl;
-
-	fread(&size, sizeof(size_t), 1, fp);
-
-	vec.resize(size);
-
-	fread(&vec[0], sizeof(T), size, fp);
-
-	fclose(fp);
-}
-template<typename T>
-static void fwriteVector(std::string filename, std::vector<T> vec) {
-	FILE* fp;
-	size_t size;
-
-	fopen_s(&fp, filename.c_str(), "wb");
-	
-	std::cout << "output for " << filename << std::endl;
-
-	size = vec.size();
-	
-	fwrite(&size, sizeof(size_t), 1, fp);
-	fwrite(&vec[0], sizeof(T), size, fp);
-	
-	fclose(fp);
-}
-template<typename T>
-static void fwriteVectorText(std::string filename, std::vector<T> vec) {
-	FILE* fp;
-	size_t size;
-
-	fopen_s(&fp, filename.c_str(), "w");
-
-	std::cout << "output for " << filename << std::endl;
-
-	size = vec.size();
-	
-	fwrite(&size, sizeof(size_t), 1, fp);
-	fwrite(&vec[0], sizeof(T), size, fp);
-
-	fclose(fp);
-}
-
-
-
-JosekiByKyokumen::JosekiByKyokumen(){
+//オプション
+JosekiByKyokumen::JosekiByKyokumen() {
 	option.addOption("joseki_by_kyokumen_on", "check", "false");
 	option.addOption("joseki_by_kyokumen_folder", "string", "joseki");
 	option.addOption("joseki_by_kyokumen_filename", "string", "jdk");
@@ -109,416 +297,177 @@ JosekiByKyokumen::JosekiByKyokumen(){
 	option.addOption("joseki_by_kyokumen_mass_rate", "string", "0.5");
 	option.addOption("joseki_by_kyokumen_rename", "check", "false");
 	option.addOption("joseki_by_kyokumen_nodecountmax", "string", "1000");
+	option.addOption("joseki_by_kyokumen_borderHisCount", "string", "4");
 }
 
-static std::atomic<size_t> nodeCounter = 0;
-static size_t nodeCountMax;
-void JosekiByKyokumen::input(SearchTree *tree)
-{
-
-	bool inputOK = false;
+//初期化
+void JosekiByKyokumen::init() {
 	if (!option.getC("joseki_by_kyokumen_on")) {
 		return;
 	}
-
-	std::cout << "start joseki input from " << FILENAME("node.bin") << std::endl;
-
-	StopWatch sw;
-	sw.start();
-	inputOK = inputBinary();
-	sw.print("inputBinaly:");
-	SearchNode* root = new SearchNode;
-
-	if (inputOK) {
-		nodeCountMax = option.getI("joseki_by_kyokumen_nodecountmax");
-
-		buildTree(root, 0, Move().binary(), option.getC("joseki_by_kyokumen_multithread"));
-
-		sw.print("buildTree:");
-		tree->setRoot(root);
-	}
-
-	std::cout << "node count : " << nodeCounter << std::endl;
+	iojoseki.init(FILENAME("queue_node.bin"), FILENAME("queue_id.bin"), FILENAME("queue_childposition.bin"), FILENAME("queue_move.bin"));
 }
 
-bool JosekiByKyokumen::inputBinary()
-{
-	iodata io;
+void JosekiByKyokumen::outputQueue(SearchTree& tree) {
+	CHECKJOSEKIISON;
 
-	//局面情報の読み込み
-	if (freadVector(FILENAME("node.bin"), (io.kyokumens)) == false) {
-		return false;
-	}
-
-	//指し手情報の読み込み
-	freadVector(FILENAME("move.bin"), (io.moves));
-
-	//IDの読み込み
-	freadVector(FILENAME("id.bin"), (io.keys));
-
-	//childpositionの読み込み
-	freadVector(FILENAME("childposition.bin"), (io.childPosition));
-
-	const size_t childrenCount = io.moves.size();
-	const size_t kyokumenCount = io.kyokumens.size();
-	std::vector<std::vector<kyokumendata::child>> kyokumenChildren;
-	kyokumenChildren.resize(kyokumenCount);
-	for (size_t i = 0; i < kyokumenCount; ++i) {
-		const size_t childStart = io.childPosition[i].position;
-		const size_t childCount = io.childPosition[i].count;
-		for (size_t c = 0; c < childCount; ++c) {
-			kyokumenChildren[i].push_back(kyokumendata::child(io.moves[childStart + c].moveU, io.moves[childStart + c].childKyokmenNumber));
-		}
-	}
-
-	kyokumenDataArray = (kyokumendata*)malloc(sizeof(kyokumendata) * kyokumenCount);
-	kyokumenMap.reserve(kyokumenCount);
-	for (size_t i = 0; i < kyokumenCount; ++i) {
-		const auto& ksdi = io.kyokumens[i];
-		kdkey key = io.keys[i];
-		auto& k = (kyokumenMap[i] = kyokumendata((SearchNode::State)ksdi.status, ksdi.eval, ksdi.mass));
-		if (ksdi.status == (int)SearchNode::State::E) {
-			k.children = kyokumenChildren[i];
-		}
-		idList[key] = i;
-		if (kyokumenDataArray != NULL) {
-			kyokumenDataArray[i] = k;
-		}
-		else {
-			std::cout << "メモリの確保に失敗しました" << std::endl;
-			exit(1);
-		}
-	}
-
-	return true;
-}
-
-void JosekiByKyokumen::buildTree(SearchNode* node, size_t ID, uint16_t moveU, bool multiThread)
-{
-	++nodeCounter;
-
-	const auto& km = kyokumenDataArray[ID];
-	auto state = km.state;
-
-	
-	size_t childCount = km.children.size();
-	SearchNode* list = new SearchNode[childCount];
-	if (multiThread) {
-		std::vector<std::thread>th;
-		for (size_t i = 0; i < childCount; ++i) {
-			th.push_back(std::thread(&JosekiByKyokumen::buildTree, this, &(list[i]), km.children[i].ID, km.children[i].moveU, false));
-		}
-		for (size_t i = 0; i < th.size(); ++i) {
-			th[i].join();
-		}
-	}
-	else {
-		if (nodeCounter + childCount < nodeCountMax) {
-			for (size_t i = 0; i < childCount; ++i) {
-				buildTree(&(list[i]), km.children[i].ID, km.children[i].moveU, 0);
-			}
-		}
-		else {
-			if (state == SearchNode::State::E) {
-				state = SearchNode::State::NotExpanded;
-			}
-			childCount = 0;
-		}
-	}
-	node->children.setChildren(list, childCount);
-	node->restoreNode(Move(moveU), state, km.eval, km.mass);
-}
-
-void JosekiByKyokumen::output(SearchNode* root)
-{
-	if (!option.getC("joseki_by_kyokumen_on")) {
+	//historyがなければ出力するものもないので終了
+	if (tree.getHistory().empty()) {
+		std::cout << "history is empty." << std::endl;
 		return;
 	}
 
-	std::cout << "枝刈りを行います" << std::endl;
-	double maxMass = root->mass;
-	for (int i = 0; i < root->children.size(); ++i) {
-		if (maxMass < root->children[i].mass) {
-			maxMass = root->children[i].mass;
+	std::cout << "OutputQueue Start" << std::endl;
+	//定跡ファイルが開かれてなかったら開く
+	iojoseki.init(FILENAME("queue_node.bin"), FILENAME("queue_id.bin"), FILENAME("queue_childposition.bin"), FILENAME("queue_move.bin"));
+
+	//ノード数をカウントする
+	size_t nodeCount = 0;
+	//手数カウントを取得
+	auto firstKyokumenHisCount = tree.getHistory().size();
+	//保存するノードの深さの上限を設定する
+	int borderHis = firstKyokumenHisCount + option.getI("joseki_by_kyokumen_borderHisCount");
+	//trueの間のみキューにノードを追加する
+	bool add = true;
+
+	//出力用のキュー
+	std::queue<std::pair<kdkey, SearchNode*>> q;
+	//ゲームそのものの初期局面を取得
+	Kyokumen startkyokumen;
+	//初期局面でのノードを取得
+	SearchNode* root = tree.getHistory().front();
+	//historyの末端まで局面を進める
+	for (int i = 1; i < tree.getHistory().size(); ++i) {
+		root = (tree.getHistory())[i];
+		startkyokumen.proceed(root->move);
+	}
+
+	//初期局面をキューに追加
+	q.push(std::make_pair(kdkey(startkyokumen.getBammen(), firstKyokumenHisCount), root));
+	while (!q.empty()) {
+		//キューの先頭を取り出す
+		const auto front = q.front();
+		const auto key = front.first;
+		auto node = front.second;
+		q.pop();
+
+		//深さの上限に達していたら追加しない
+		if (add && borderHis <= key.hisCount) {
+			add = false;
 		}
-	}
-	std::vector<std::thread>th;
-	for (int i = 0; i < root->children.size(); ++i) {
-		th.push_back(std::thread(Pruning::pruningMass,&(root->children[i]), maxMass * option.getD("joseki_by_kyokumen_mass_rate")));
-	}
-	for (int i = 0; i < root->children.size(); ++i) {
-		th[i].join();
-	}
-	std::cout << "枝刈り終了" << std::endl;
 
-	StopWatch sw;
-	sw.start();
+		//子ノードがあればキューに追加する
+		if (add && (node->getState() == SearchNode::State::E)) {
+			//const Kyokumen parentKyokumen = Kyokumen(key.bammen, isSente(key.hisCount));
+			const SearchPlayer parentPlayer(Kyokumen(key.bammen, isSente(key.hisCount)));
+			const int nextHisCount = key.hisCount + 1;
+			for (int i = 0; i < node->children.size(); ++i) {
+				SearchPlayer player = parentPlayer;
+				player.proceed(node->children[i].move);
 
-	std::vector<std::string> usitokens = { "position","startpos" };
-	Kyokumen kyokumen(usitokens);
-	size_t rootID = 0;
-	
-	std::cout << "start output" << std::endl;
-	outputRecursive(0, kyokumen, root,rootID,false);
-
-	renameOutputFile();
-
-	sw.print("outputRecurcive:");
-
-	outputBinary();
-
-	sw.print("outputBinary:");
-}
-
-Move JosekiByKyokumen::getBestMove(std::vector<SearchNode*> history)
-{
-	Kyokumen kyokumen;
-	Move best;
-	for (int i = 1; i < history.size(); ++i) {
-		kyokumen.proceed(history[i]->move);
-	}
-	kdkey key = kdkey(kyokumen.getBammen(), history.size() - 1);
-	//for(int i = 0;)
-	return false;
-}
-
-
-void JosekiByKyokumen::outputBinary() {
-	//局面の出力
-	iodata io;
-
-	io.set(kyokumenMap, idList);
-
-	//ノードの保存
-	fwriteVector(FILENAME("node.bin"), io.kyokumens);
-
-	//ムーブの保存
-	fwriteVector(FILENAME("move.bin"), io.moves);
-
-	//IDの保存
-	fwriteVector(FILENAME("id.bin"), io.keys);
-
-	//childpositionの保存
-	fwriteVector(FILENAME("childposition.bin"), io.childPosition);
-
-
-	//テキストで書き出し
-	if (option.getC("joseki_by_kyokumen_text_output_on")) {
-		//ノードの保存
-		{
-			std::ofstream ofs(FILENAME("node.txt"));
-			if (ofs.is_open()) {
-				std::cout << "output to " << FILENAME("node.txt") << std::endl;
-				const auto& target = io.kyokumens;
-				ofs << target.size() << std::endl;
-				for (const auto& t : target) {
-					ofs << t.status << "\t";
-					ofs << t.eval << "\t";
-					ofs << t.mass << "\t";
-					ofs << std::endl;
-				}
+				q.push(std::make_pair(kdkey(player.kyokumen.getBammen(), nextHisCount), &node->children[i]));
 			}
-			ofs.close();
-		}
-
-
-		//ムーブの保存
-		{
-			std::ofstream ofs(FILENAME("move.txt"));
-			if (ofs.is_open()) {
-				std::cout << "output to " << FILENAME("move.txt") << std::endl;
-				const auto& target = io.moves;
-				ofs << target.size() << std::endl;
-				for (const auto& t : target) {
-					ofs << t.moveU << "\t";
-					ofs << t.childKyokmenNumber << "\t";
-					ofs << std::endl;
-				}
-			}
-			ofs.close();
-		}
-
-
-		//IDの保存
-		{
-			std::ofstream ofs(FILENAME("id.txt"));
-			if (ofs.is_open()) {
-				std::cout << "output to " << FILENAME("id.txt") << std::endl;
-				const auto& target = io.keys;
-				ofs << target.size() << std::endl;
-				for (const auto& t : target) {
-					ofs << t.hisCount << "\t";
-					ofs << Kyokumen(t.bammen, true).toSfen() << "\t";
-					ofs << std::endl;
-				}
-			}
-			ofs.close();
-		}
-
-		//childpositionの保存
-		{
-			std::ofstream ofs(FILENAME("childposition.txt"));
-			if (ofs.is_open()) {
-				std::cout << "output to " << FILENAME("childposition.txt") << std::endl;
-				const auto& target = io.childPosition;
-				ofs << target.size() << std::endl;
-				for (const auto& t : target) {
-					ofs << t.position << "\t";
-					ofs << t.count << "\t";
-					ofs << std::endl;
-				}
-			}
-			ofs.close();
-		}
-
-	}
-}
-
-void JosekiByKyokumen::renameOutputFile(){
-	if (option.getC("joseki_by_kyokumen_rename")) {
-		std::vector<std::string> v = {
-			"node",
-			"move",
-			"id",
-			"childposition",
-		};
-		for (int i = 0; i < v.size(); ++i) {
-			std::string name = v[i] + ".bin";
-			std::rename(FILENAME(name).c_str(), FILERENAME(name).c_str());
-		}
-		if (option.getC("joseki_by_kyokumen_text_output_on")) {
-			for (int i = 0; i < v.size(); ++i) {
-				std::string name = v[i] + ".txt";
-				std::rename(FILENAME(name).c_str(), FILERENAME(name).c_str());
-			}
-		}
-	}
-}
-
-std::vector<StopWatch> swa;
-
-void JosekiByKyokumen::outputRecursive(int hisCount, Kyokumen kyokumen, SearchNode* node, size_t& ID, bool multiThread)
-{
-	if (hisCount == 0) {
-		for (int i = 0; i < 3; ++i) {
-			swa.push_back(StopWatch());
-		}
-	}
-
-	swa[0].start();
-	kyokumen.proceed(node->move);
-	swa[0].stop();
-
-	swa[1].start();
-	ID = getID(hisCount, kyokumen.getBammen());
-	swa[1].stop();
-
-	bool duplicate, checkChildren = true;
-
-	swa[2].start();
-	auto itr = kyokumenMap.find(ID);
-	duplicate = (itr != kyokumenMap.end());
-	swa[2].stop();
-
-	kyokumendata* kd;
-	if (duplicate) {
-		//既に局面が保存されている
-		kd = &kyokumenMap[ID];
-		if (kd->mass < node->mass) {
-			kd->eval = node->eval;
-			kd->mass = node->mass;
-			kd->state = node->getState();
 		}
 		else {
-			//checkChildren = false;
-		}
-	}
-	else {
-		//新しく局面を保存する
-		kyokumendata newkd(node->getState(), node->eval, node->mass);
-		kyokumenMap[ID] = newkd;
-		kd = &kyokumenMap[ID];
-	}
-	kd->count++;
-
-	if (node->children.size() > 0) {
-		if (kd->children.size() == 0) {
-			kd->children.resize(node->children.size());
-		}
-
-		if (checkChildren) {
-			if (false) {
-				std::vector<std::thread>th;
-				for (int i = 0; i < node->children.size(); ++i) {
-					SearchNode* child = &(node->children[i]);
-					th.push_back(std::thread(&JosekiByKyokumen::outputRecursive, this, hisCount + 1, kyokumen, child, std::ref(kd->children[i].ID), false));
-					kd->children[i].moveU = child->move.binary();
-				}
-				for (int i = 0; i < th.size(); ++i) {
-					th[i].join();
-				}
-			}
-			else {
-				for (int i = 0; i < node->children.size(); ++i) {
-					SearchNode* child = &(node->children[i]);
-					outputRecursive(hisCount + 1, kyokumen, child, (kd->children[i].ID), false);
-					kd->children[i].moveU = child->move.binary();
-				}
+			//ノードの展開状態が展開中か未展開なら未展開にする
+			if (node->isLeaf()) {
+				node->setState(SearchNode::State::N);
 			}
 		}
-	}
 
-	if (hisCount == 0) {
-		for (int i = 0; i < swa.size(); ++i) {
-			swa[i].print("sw" + std::to_string(i) + ":");
+		//ノードを出力
+		iojoseki.set(key, node);
+
+		nodeCount++;
+		if (nodeCount % 1000000 == 0) {
+			//ノード数に応じて定期的に情報を出力
+			std::cout << "qsize : " << q.size() << "\tnodeCount : " << nodeCount << std::endl;
 		}
 	}
+	iojoseki.fin();
 }
 
-inline size_t JosekiByKyokumen::getID(const int hisCount,const Bammen bammen)
-{
-	size_t ID;
-	const auto key = kdkey(bammen, hisCount);
-	auto itr = idList.find(key);
-	if (itr == idList.end()) {
-		ID = idList.size();
-		idList[key] = ID;
-	}
-	else {
-		ID = idList[key];
-	}
-	return ID;
-}
+void JosekiByKyokumen::inputQueue(SearchTree& tree) {
+	CHECKJOSEKIISON;
 
-void JosekiByKyokumen::iodata::set(std::unordered_map<size_t, kyokumendata>& kyokumenMap, std::unordered_map<kdkey, size_t, Hash>& idList){
-	keys.resize(idList.size());
-	kyokumens.resize(idList.size());
-	std::vector<std::vector<kyokumendata::child>>childrens(idList.size());
-	size_t childCount = 0, position = 0;
+	std::cout << "InputQueue Start" << std::endl;
 
-	for (auto itr = idList.begin(); itr != idList.end(); ++itr) {
-		auto id = itr->second;
-		auto& dist = kyokumens[id];
-		auto& source = kyokumenMap[id];
-		keys[id] = itr->first;
-		dist.eval = source.eval;
-		dist.mass = source.mass;
-		dist.status = (int)source.state;
-		childrens[id] = source.children;
-		childCount += source.children.size();
-	}
+	//定跡ファイルが開かれてなかったら開く
+	iojoseki.init(FILENAME("queue_node.bin"), FILENAME("queue_id.bin"), FILENAME("queue_childposition.bin"), FILENAME("queue_move.bin"));
 
-	moves.reserve(childCount);
-	childPosition.reserve(childrens.size());
-	for (size_t i = 0; i < childrens.size(); ++i) {
-		auto& target = childrens[i];
-		for (size_t j = 0; j < target.size(); ++j) {
-			moves.push_back(movesavedata(target[j].moveU, target[j].ID));
+	//出力したノード数カウント
+	size_t nodeCount = 0;
+	//キューに格納する用の構造体
+	struct qval {
+		SearchNode* node = nullptr;
+		size_t ID = 0;
+		Move move = Move();
+		int hisCount = -1;
+		qval(SearchNode* node, size_t id, int hisCount, uint16_t move = Move().binary()) {
+			this->node = node;
+			this->ID = id;
+			this->move = Move(move);
+			this->hisCount = hisCount;
 		}
-		child c;
-		c.count = target.size();
-		c.position = position;
-		childPosition.push_back(c);
-		position += target.size();
+	};
+	//キュー本体
+	std::queue<qval> q;
+	//指し手の履歴を取得
+	auto history = tree.getHistory();
+	//trueの間のみキューにノードを追加する
+	bool add = true;
+	//深さの上限を設定
+	int borderHis = history.size() + option.getI("joseki_by_kyokumen_borderHisCount");
+
+	//historyに何もなかったら初期局面を格納しておく
+	if (history.size() == 0) {
+		tree.set({ "position","startpos" });
+		history = tree.getHistory();
 	}
+
+	//キューにhistoryの末端を保存
+	q.push(qval(history.back(), iojoseki.getKyokumenID(history), history.size(), history.back()->move.binary()));
+
+	while (!q.empty()) {
+		//キューの先頭を取り出し
+		auto front = q.front();
+		q.pop();
+
+		//ノードを定跡から読み込み
+		iojoseki.getNode(front.ID, front.node, front.move);
+		//深さ上限ならキューへの追加終了
+		if (borderHis <= front.hisCount) {
+			add = false;
+		}
+
+		//子ノードがありそうなら定跡から取得
+		if (add && (front.node->getState() == SearchNode::State::E)) {
+			const int nextHisCount = front.hisCount + 1;
+			if (front.node->children.size() == 0) {
+				auto childrenID = iojoseki.getChildren(front.ID);
+				SearchNode* list = new SearchNode[childrenID.size()];
+				for (int i = 0; i < childrenID.size(); ++i) {
+					q.push(qval(&(list[i]), childrenID[i].childKyokmenNumber, nextHisCount, childrenID[i].moveU));
+				}
+				front.node->children.setChildren(list, childrenID.size());
+			}
+		}
+		else {
+			if (front.node->isLeaf()) {
+				front.node->setState(SearchNode::State::N);
+			}
+		}
+
+		nodeCount++;
+		if (nodeCount % 1000000 == 0) {
+			std::cout << "qsize : " << q.size() << "\tnodeCount : " << nodeCount << std::endl;
+		}
+
+	}
+	iojoseki.fin();
+}
+
+void JosekiByKyokumen::coutFronID(size_t id) {
+	iojoseki.init(FILENAME("queue_node.bin"), FILENAME("queue_id.bin"), FILENAME("queue_childposition.bin"), FILENAME("queue_move.bin"));
+	iojoseki.printKyokumen(id);
 }

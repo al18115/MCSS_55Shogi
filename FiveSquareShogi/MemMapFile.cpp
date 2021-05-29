@@ -1,9 +1,6 @@
 ﻿#include "MemMapFile.h"
 #include <string.h>
 
-#include "MemMapFile.h"
-
-
 // メモリマップドファイル実装部
 
 CMemMapFile::CMemMapFile()
@@ -24,8 +21,9 @@ CMemMapFile::~CMemMapFile()
         CloseHandle(m_hFile);
 }
 
+
 // ファイルオープン
-bool CMemMapFile::Open(char* filename, DWORD rwflag, DWORD openflag)
+bool CMemMapFile::Open(LPCWSTR filename, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, DWORD rwflag, DWORD openflag)
 {
     // ファイルオープン
     m_hFile = CreateFile((LPCWSTR)filename, rwflag, 0, 0, openflag, 0, 0);
@@ -36,7 +34,7 @@ bool CMemMapFile::Open(char* filename, DWORD rwflag, DWORD openflag)
     DWORD mapflag = PAGE_READWRITE;
     if (rwflag == GENERIC_READ)
         mapflag = PAGE_READONLY; // 読み込み専用に設定
-    m_hMap = CreateFileMapping(m_hFile, 0, mapflag, 0, 0, (LPCWSTR)filename);
+    m_hMap = CreateFileMapping(m_hFile, 0, mapflag, dwMaximumSizeHigh, dwMaximumSizeLow, (LPCWSTR)filename);
     if (m_hMap <= 0) {
         CloseHandle(m_hFile);
         m_hFile = INVALID_HANDLE_VALUE;
@@ -65,7 +63,7 @@ bool CMemMapFile::Open(char* filename, DWORD rwflag, DWORD openflag)
 
 
 // ファイルポインタ取得
-bool CMemMapFile::GetPtr(void** ptr, char* subfilename, DWORD* pfilesize)
+bool CMemMapFile::GetPtr(void** ptr, LPCWSTR subfilename, DWORD* pfilesize)
 {
     *ptr = m_pPointer;
     if (pfilesize != NULL)

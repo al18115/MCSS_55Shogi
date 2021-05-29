@@ -25,10 +25,10 @@ public:
     void init(SearchTree* tree);
     void fin(std::vector<SearchNode*>history);
     Move getBestMove(std::vector<SearchNode*>history);
+    JosekiByKyokumen josekiByKyokumen;
 private:
     JosekiDataBase josekiDataBase;
     JosekiInput input;
     JosekiOutput output;
-    JosekiByKyokumen josekiByKyokumen;
     bool sokusashi = false;
 };

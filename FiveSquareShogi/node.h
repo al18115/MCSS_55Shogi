@@ -95,7 +95,8 @@ public:
 	double getChildRate(SearchNode* const child, const double T)const;
 	int getMateNum()const;
 
-	State getState() { return status; }
+	State getState() const { return status.load(); }
+	void setState(State state) { status.store(state); }
 	void restoreNode(Move move, State state, double eval, double mass);
 	static void setNodeCount(std::int64_t _nodecount) { nodecount = _nodecount; }
 private:

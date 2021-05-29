@@ -219,7 +219,7 @@ void JosekiDataBase::josekiInputFromDB(SearchTree* tree) {
 		std::vector<std::thread> thr;
 		std::vector<Stmt*>sss;
 		SearchNode* list = new SearchNode[childrenData.size()];
-		for (int i = 0; i < childrenData.size(); ++i) {
+		for (size_t i = 0; i < childrenData.size(); ++i) {
 			Stmt* ss = new Stmt(db, "select id,move,status,eval,depth from " + tableName + " where parentid = ?");
 			list[i].restoreNode(childrenData[i].move, childrenData[i].status, childrenData[i].eval, childrenData[i].depth);
 			thr.push_back(std::thread(&JosekiDataBase::yomikomiRecursiveFromDB, this, &list[i], ss, childrenData[i].id));
@@ -310,6 +310,9 @@ void JosekiDataBase::open(){
 }
 
 void JosekiDataBase::close(){
+	if (option.getC("joseki_database_on") == false) {
+		return;
+	}
 	//トランザクション終了
 	char* errorMessage;
 	auto ret = sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errorMessage);

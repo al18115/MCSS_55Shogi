@@ -59,7 +59,7 @@ void Commander::execute(const std::string& enginename) {
 			commander.go_alive = false;
 			commander.info_alive = false;
 			commander.agents.pauseSearch();
-			commander.joseki.fin(commander.tree.getHistory());
+			//commander.joseki.fin(commander.tree.getHistory());
 			std::cout << "gameoverok" << std::endl;
 		}
 		else if (tokens[0] == "debugsetup") {
@@ -77,16 +77,9 @@ void Commander::execute(const std::string& enginename) {
 		else if (tokens[0] == "showBanFigure") {
 			std::cout << commander.tree.getRootPlayer().kyokumen.toBanFigure() << std::endl;
 		}
-		else if (tokens[0] == "josekibykyokumeninput") {
-			JosekiByKyokumen jbk;
-			jbk.input(&commander.tree);
-			SearchNode* node = commander.tree.getHistory().front();
-			std::cout << tokens[0] << "ok" << std::endl;
-			
-		}
-		else if (tokens[0] == "josekibykyokumenoutput") {
-			commander.joseki.fin(commander.tree.getHistory());
-			std::cout << tokens[0] << "ok" << std::endl;
+		else if (tokens[0] == "iotest") {
+			commander.joseki.josekiByKyokumen.coutFronID(std::stoi(tokens[1]));
+			std::cout << "end iotest" << std::endl;
 		}
 		else if (tokens[0] == "toUSI") {
 			for (int i = 1; i < tokens.size(); ++i) {
@@ -162,7 +155,7 @@ void Commander::setOption(const std::vector<std::string>& token) {
 			tree.leave_branchNode = (token[4] == "true");
 		}
 		else if (token[2] == "continuous_tree") {
-			continuousTree = (token[4] == "true");
+			tree.continuous_tree = (token[4] == "true");
 		}
 		else if (token[2] == "eval_folderpath") {
 			//aperyのパラメータファイルの位置を指定する 空白文字がパスにあると駄目なのを何とかしたい?
@@ -248,6 +241,8 @@ void Commander::gameInit() {
 }
 
 void Commander::go(const std::vector<std::string>& tokens) {
+	//局面を進める直前に探索木を書き出す。
+	joseki.josekiByKyokumen.inputQueue(tree);
 	const Kyokumen& kyokumen = tree.getRootPlayer().kyokumen;
 	tree.evaluationcount = 0ull;
 	info_prev_evcount = 0ull;
@@ -258,6 +253,7 @@ void Commander::go(const std::vector<std::string>& tokens) {
 	if (go_thread.joinable()) go_thread.join();
 	go_alive = true;
 	if (tp.rule == TimeProperty::TimeRule::infinite) return;
+
 	go_thread = std::thread([this, tp]() {
 		using namespace std::chrono_literals;
 		const auto starttime = std::chrono::system_clock::now();
@@ -324,6 +320,7 @@ void Commander::go(const std::vector<std::string>& tokens) {
 		chakushu(provisonalBestMove);
 		});
 	info_enable = true;
+	if (go_thread.joinable()) go_thread.join();
 }
 
 //first:標準的な思考時間 second:思考時間の上限
@@ -405,6 +402,8 @@ void Commander::chakushu(SearchNode* const bestchild) {
 	std::cout << "info pv " << pvstr << "depth " << std::setprecision(2) << root->mass << " seldepth " << depth
 		<< " score cp " << static_cast<int>(root->eval) << " nodes " << SearchNode::getNodeCount() << std::endl;
 	std::cout << "bestmove " << bestchild->move.toUSI() << std::endl;
+	//局面を進める直前に探索木を書き出す。
+	joseki.josekiByKyokumen.outputQueue(tree);
 	tree.proceed(bestchild);
 	agents.noticeProceed();
 	if (permitPonder) {

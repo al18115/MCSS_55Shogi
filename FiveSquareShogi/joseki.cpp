@@ -34,7 +34,7 @@ void Joseki::init(SearchTree *tree){
 	if (option.getC("joseki_on")) {
 		input.josekiInput(tree);
 		josekiDataBase.josekiInputFromDB(tree);
-		josekiByKyokumen.input(tree);
+		josekiByKyokumen.init();
 		sokusashi = option.getC("joseki_sokusashi_on");
 	}
 }
@@ -43,8 +43,6 @@ void Joseki::fin(std::vector<SearchNode*>history){
 	if (option.getC("joseki_on")) {
 		output.backUp(history);
 		output.josekiOutput(history);
-		josekiDataBase.josekiOutput(history.front());
-		josekiByKyokumen.output(history.front());
 	}
 }
 
