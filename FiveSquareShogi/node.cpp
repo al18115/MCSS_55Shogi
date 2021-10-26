@@ -320,6 +320,18 @@ SearchNode* SearchNode::getBestChild(int funccode)const {
 				return best;
 			}
 		}
+		case 4: {
+			//評価値で即指し
+			double min = std::numeric_limits<double>::max();
+			for (auto& child : children) {
+				const double e = child.eval;
+				if (e < min) {
+					best = &child;
+					min = e;
+				}
+			}
+			return best;
+		}
 	}
 }
 

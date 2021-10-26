@@ -4,7 +4,7 @@
 #include "usi.h"
 
 JosekiInput::JosekiInput(){
-	option.addOption("joseki_input_on", "check", "false");
+	option.addOption("joseki_input_on", "check", "true");
 	option.addOption("joseki_input_folder", "string", "joseki");
 	option.addOption("joseki_input_file", "string", "joseki_input.bin");
 	option.addOption("joseki_input_infofile", "string", "joseki_input_info.txt");

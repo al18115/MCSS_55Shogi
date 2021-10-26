@@ -3,7 +3,7 @@
 #include <fstream>
 
 JosekiOutput::JosekiOutput(){
-	option.addOption("joseki_output_on", "string", "false");
+	option.addOption("joseki_output_on", "string", "true");
 	option.addOption("joseki_output_folder", "string", "joseki");
 	option.addOption("joseki_output_file", "string", "joseki_output.bin");
 	option.addOption("joseki_output_infofile", "string", "joseki_output_info.txt");
@@ -13,6 +13,10 @@ JosekiOutput::JosekiOutput(){
 
 //定跡書き出し
 void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
+
+	//枝刈り
+	pruning.pruning(history.front());
+
 	if (!outputInfo(history)) {
 		return;
 	}
