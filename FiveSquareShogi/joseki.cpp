@@ -12,7 +12,7 @@ HANDLE shareHandle;
 
 Joseki::Joseki(){
 	option.addOption("joseki_on", "check", "true");
-	option.addOption("joseki_sokusashi_on", "check", "false");
+	option.addOption("joseki_sokusashi_on", "check", "true");
 }
 
 void Joseki::setOption(std::vector<std::string> tokens){
