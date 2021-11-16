@@ -8,9 +8,10 @@ struct josekinode {
     uint16_t move = -1;
     double mass = 0;
     double eval = 0;
+    //double origin_eval = 0;
     int childCount = -1;
     size_t childIndex = -1;
-    josekinode(size_t _index, SearchNode::State _st, uint16_t _move, double _mass, double _eval, int _childCount, size_t _childIndex) :/*index(_index),*/ st(_st), move(_move), mass(_mass), eval(_eval), childCount(_childCount), childIndex(_childIndex) {
+    josekinode(size_t _index, SearchNode::State _st, uint16_t _move, double _mass, double _eval, /*double _origin_eval,*/ int _childCount, size_t _childIndex) :/*index(_index),*/ st(_st), move(_move), mass(_mass), eval(_eval), /*origin_eval(_origin_eval), */ childCount(_childCount), childIndex(_childIndex) {
 
     }
     josekinode() {

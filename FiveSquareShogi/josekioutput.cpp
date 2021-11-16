@@ -3,7 +3,7 @@
 #include <fstream>
 
 JosekiOutput::JosekiOutput(){
-	option.addOption("joseki_output_on", "string", "true");
+	option.addOption("joseki_output_on", "check", "true");
 	option.addOption("joseki_output_folder", "string", "joseki");
 	option.addOption("joseki_output_file", "string", "joseki_output.bin");
 	option.addOption("joseki_output_infofile", "string", "joseki_output_info.txt");
@@ -21,6 +21,8 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		return;
 	}
 
+	std::cout << "定跡書き出し開始" << std::endl;
+
 	//ここからファイルに書き出し
 	size_t index = 0;
 	size_t childIndex = 1;
@@ -30,14 +32,15 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	josekinode* jn = (josekinode*)malloc(sizeof(josekinode) * nodeCount);
 
 	nodes[0] = history.front();
-	while (nodes[index] != NULL) {
+	while (nodes[index] != NULL && index < nodeCount) {
+		//std::cout << index << std::endl;
 		SearchNode* node = nodes[index];	//nodesから注目ノードを取り出し
 		const size_t childCount = node->children.size();
 		SearchNode::State state = node->getState();
 		if (childCount > 0) {
 			//state = SearchNode::State::Expanded;
 		}
-		jn[index] = josekinode(index, state, node->move.binary(), node->mass, node->getEvaluation(), childCount, childIndex);	//注目ノードをjnに収める
+		jn[index] = josekinode(index, state, node->move.binary(), node->mass, node->getEvaluation(), /*node->getOriginEval(),*/ childCount, childIndex);	//注目ノードをjnに収める
 
 		for (int i = 0; i < childCount; ++i) {	//子ノードをnodesに格納
 			nodes[childIndex++] = &(node->children[i]);
@@ -59,12 +62,16 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	}*/
 	free(nodes);
 
+	std::cout << "定跡書き出し完了" << std::endl;
+
 }
 
 bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	if (!option.getC("joseki_output_on")) {
 		return false;
 	}
+
+	std::cout << "情報出力開始" << std::endl;
 
 	std::string moveHis = "";
 	std::string usiHis = "";
@@ -109,6 +116,9 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 		ofs.close();
 		return false;
 	}
+
+	std::cout << "情報出力完了" << std::endl;
+
 	return true;
 }
 

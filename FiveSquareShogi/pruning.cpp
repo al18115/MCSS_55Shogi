@@ -3,11 +3,16 @@
 
 size_t Pruning::pruning(SearchNode* root) {
 	size_t r = 0;
+	std::cout << std::endl << "枝刈り前ノード数：" << SearchNode::getNodeCount() << std::endl;
 
 	std::cout << "枝刈りを行います" << std::endl;
 
 	std::vector<SearchNode*>history;
 	r = partialPruning(root, history, 1, 0);
+
+	std::cout << "枝刈り　ノード数：" << r << std::endl;
+
+	std::cout << "枝刈り後ノード数：" << SearchNode::getNodeCount() << std::endl << std::endl;
 
 	return r;
 }
@@ -33,7 +38,8 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> histor
 	history.push_back(node);
 	//枝刈り判定を行う
 	if (isPruning(node, select, depth, backupRate)) {
-		pruningExecuter(node);
+		//r += node->children.size();
+		 r += pruningExecuter(node);
 	}
 	else {
 		
@@ -84,25 +90,36 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> histor
 	return r;
 }
 
-void Pruning::pruningExecuter(SearchNode* node) {
+int Pruning::pruningExecuter(SearchNode* node) {
+	int r = 1;
+
 	if (node->children.size() > 0) {
+		for (int i = 0; i < node->children.size(); i++) {
+			r += pruningExecuter(&(node->children[i]));
+		}
 		node->children.clear();
 		node->restoreNode(node->move, SearchNode::State::NotExpanded, node->eval, node->mass);
 	}
+	return r;
 }
 
 bool Pruning::isPruning(SearchNode* node, double select, int depth, double backupRate) {
-	//実現確率がpruningBorder%以下なら切り捨て
 	switch (pruning_type)
 	{
 	case 0:
 	default:
+		//実現確率がpruningBorder%以下なら切り捨て
 		//%で考えてるから0.01倍
 		if (select < pruningBorder * 0.01) {
 			return true;
 		}
 		break;
-
+	case 1:
+		//深さがpruning_depth以下でなければ切り捨て
+		if (depth > pruning_depth) {
+			return true;
+		}
+		break;
 	}
 	return false;
 }

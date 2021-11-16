@@ -46,6 +46,10 @@ void Commander::execute(const std::string& enginename) {
 			commander.go(tokens);
 		}
 		else if (tokens[0] == "stop") {
+			for (const auto &child : commander.tree.getHistory().back()->children) {
+				//commander.tree.getHistory().back()->children;
+				std::cout << child.move.toUSI() << " " << child.eval << " " << child.mass << " " << child.getEs() << std::endl;
+			}
 			commander.chakushu(commander.tree.getBestMove());
 		}
 		else if (tokens[0] == "fouttree") {
@@ -78,7 +82,7 @@ void Commander::execute(const std::string& enginename) {
 			std::cout << commander.tree.getRootPlayer().kyokumen.toBanFigure() << std::endl;
 		}
 		else if (tokens[0] == "iotest") {
-			commander.joseki.josekiByKyokumen.coutFronID(std::stoi(tokens[1]));
+			//commander.joseki.josekiByKyokumen.coutFronID(std::stoi(tokens[1]));
 			std::cout << "end iotest" << std::endl;
 		}
 		else if (tokens[0] == "toUSI") {
@@ -242,7 +246,7 @@ void Commander::gameInit() {
 
 void Commander::go(const std::vector<std::string>& tokens) {
 	//局面を進める直前に探索木を書き出す。
-	joseki.josekiByKyokumen.inputQueue(tree);
+	//joseki.josekiByKyokumen.inputQueue(tree);
 	const Kyokumen& kyokumen = tree.getRootPlayer().kyokumen;
 	tree.evaluationcount = 0ull;
 	info_prev_evcount = 0ull;
@@ -403,7 +407,7 @@ void Commander::chakushu(SearchNode* const bestchild) {
 		<< " score cp " << static_cast<int>(root->eval) << " nodes " << SearchNode::getNodeCount() << std::endl;
 	std::cout << "bestmove " << bestchild->move.toUSI() << std::endl;
 	//局面を進める直前に探索木を書き出す。
-	joseki.josekiByKyokumen.outputQueue(tree);
+	//joseki.josekiByKyokumen.outputQueue(tree);
 	tree.proceed(bestchild);
 	agents.noticeProceed();
 	if (permitPonder) {

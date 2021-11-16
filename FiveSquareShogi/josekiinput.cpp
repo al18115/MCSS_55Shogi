@@ -4,7 +4,7 @@
 #include "usi.h"
 
 JosekiInput::JosekiInput(){
-	option.addOption("joseki_input_on", "check", "true");
+	option.addOption("joseki_input_on", "check", "false");
 	option.addOption("joseki_input_folder", "string", "joseki");
 	option.addOption("joseki_input_file", "string", "joseki_input.bin");
 	option.addOption("joseki_input_infofile", "string", "joseki_input_info.txt");
@@ -58,7 +58,6 @@ bool JosekiInput::inputSetup() {
 	//nodesFromFile = (josekinode*)calloc(nodeCount, sizeof(josekinode));	//定跡の復元に一時的に利用するノード
 	nodesFromFile = new josekinode[nodeCount];	//定跡の復元に一時的に利用するノード
 	fread_s(nodesFromFile, sizeof(josekinode) * nodeCount,  sizeof(josekinode), nodeCount, fp);	//定跡本体をバイナリファイルから読み込み
-
 	parentsIndex = new size_t[nodeCount + 1];
 
 	fclose(fp);

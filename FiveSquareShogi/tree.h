@@ -41,7 +41,7 @@ private:
 	SearchPlayer rootPlayer;
 	std::atomic_uint64_t evaluationcount;
 
-	bool leave_branchNode = false;
+	bool leave_branchNode = true;
 	bool continuous_tree = true;
 
 private:

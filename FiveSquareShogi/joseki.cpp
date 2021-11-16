@@ -19,22 +19,22 @@ void Joseki::setOption(std::vector<std::string> tokens){
 	option.setOption(tokens);
 	input.option.setOption(tokens);
 	output.option.setOption(tokens);
-	josekiDataBase.option.setOption(tokens);
-	josekiByKyokumen.option.setOption(tokens);
+	//josekiDataBase.option.setOption(tokens);
+	//josekiByKyokumen.option.setOption(tokens);
 }
 void Joseki::coutOption() {
 	option.coutOption();
 	input.option.coutOption();
 	output.option.coutOption();
-	josekiDataBase.option.coutOption();
-	josekiByKyokumen.option.coutOption();
+	//josekiDataBase.option.coutOption();
+	//josekiByKyokumen.option.coutOption();
 }
 
 void Joseki::init(SearchTree *tree){
 	if (option.getC("joseki_on")) {
 		input.josekiInput(tree);
-		josekiDataBase.josekiInputFromDB(tree);
-		josekiByKyokumen.init();
+		//josekiDataBase.josekiInputFromDB(tree);
+		//josekiByKyokumen.init();
 		sokusashi = option.getC("joseki_sokusashi_on");
 	}
 }

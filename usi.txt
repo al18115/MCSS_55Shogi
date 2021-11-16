@@ -1,0 +1,6 @@
+setoption name leave_branchNode is true
+isready
+position startpos
+go 0 0 0 0
+
+gameover

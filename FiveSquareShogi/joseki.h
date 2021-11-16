@@ -25,9 +25,9 @@ public:
     void init(SearchTree* tree);
     void fin(std::vector<SearchNode*>history);
     Move getBestMove(std::vector<SearchNode*>history);
-    JosekiByKyokumen josekiByKyokumen;
+    //JosekiByKyokumen josekiByKyokumen;
 private:
-    JosekiDataBase josekiDataBase;
+    //JosekiDataBase josekiDataBase;
     JosekiInput input;
     JosekiOutput output;
     bool sokusashi = false;
