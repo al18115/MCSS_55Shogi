@@ -14,12 +14,13 @@ JosekiOutput::JosekiOutput(){
 //定跡書き出し
 void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 
-	//枝刈り
-	pruning.pruning(history.front());
 
 	if (!outputInfo(history)) {
 		return;
 	}
+
+	//枝刈り
+	pruning.pruning(history.front());
 
 	std::cout << "定跡書き出し開始" << std::endl;
 
