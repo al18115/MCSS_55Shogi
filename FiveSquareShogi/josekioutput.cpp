@@ -63,6 +63,8 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	}*/
 	free(nodes);
 
+	outputRecord(SearchNode::getNodeCount());
+
 	std::cout << "定跡書き出し完了" << std::endl;
 
 }
@@ -121,6 +123,16 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	std::cout << "情報出力完了" << std::endl;
 
 	return true;
+}
+
+void JosekiOutput::outputRecord(size_t size)
+{
+	std::fstream file;
+	std::string file_name = option.getS("joseki_output_folder") + "\\joseki_record.txt";
+	file.open(file_name, std::ios_base::app | std::ios_base::in);
+	if (file.is_open()) {
+		file << size * sizeof(josekinode) << std::endl;
+	}
 }
 
 
