@@ -28,7 +28,7 @@ void Pruning::pruningMass(SearchNode* node, double mass){
 	}
 }
 
-size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> history, double select, int depth, double backupRate) {
+size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> &history, double select, int depth, double backupRate) {
 	size_t r = 0;
 	//末端ならその場で終了
 	if (node->children.size() == 0) {

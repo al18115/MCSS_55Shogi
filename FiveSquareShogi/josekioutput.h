@@ -17,7 +17,7 @@ private:
     //情報ファイルへの書き出し
     bool outputInfo(const std::vector<SearchNode*> const history);
     //サイズ履歴
-    void outputRecord(size_t size);
+    void outputRecord(size_t size, size_t before);
 
     //枝刈り
     Pruning pruning;
