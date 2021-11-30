@@ -7,8 +7,12 @@ JosekiOutput::JosekiOutput(){
 	option.addOption("joseki_output_folder", "string", "joseki");
 	option.addOption("joseki_output_file", "string", "joseki_output.bin");
 	option.addOption("joseki_output_infofile", "string", "joseki_output_info.txt");
+	option.addOption("joseki_output_text_on", "check", "false");
+	option.addOption("joseki_output_txtfile", "string", "joseki_output.txt");
 	option.addOption("joseki_backup_T_e", "string", "40");
 	option.addOption("joseki_backup_T_d", "string", "80");
+	option.addOption("joseki_pruning_on", "check", "true");
+	option.addOption("joseki_pruning_border", "string", "0.01");
 }
 
 //定跡書き出し
@@ -19,9 +23,11 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		return;
 	}
 
-	//枝刈り
 	size_t beforeNode = SearchNode::getNodeCount();
-	pruning.pruning(history.front());
+	//枝刈り
+	if (option.getC("joseki_pruning_on")) {
+		pruning.pruning(history.front(), option.getD("joseki_pruning_border"));
+	}
 
 	std::cout << "定跡書き出し開始" << std::endl;
 
@@ -32,6 +38,8 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 
 	SearchNode** nodes = (SearchNode**)malloc(sizeof(SearchNode*) * (nodeCount + 1));
 	josekinode* jn = (josekinode*)malloc(sizeof(josekinode) * nodeCount);
+
+
 
 	nodes[0] = history.front();
 	while (nodes[index] != NULL && index < nodeCount) {
@@ -51,6 +59,51 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		++index;
 	}
 
+	//テキストファイル
+	if (option.getC("joseki_output_text_on")) {
+		index = 0;
+		childIndex = 1;
+		nodes[0] = history.front();
+		std::vector<std::string> kifu;
+		kifu.push_back("startpos");
+		std::ofstream jfile(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_txtfile"));
+		while (nodes[index] != NULL && index < nodeCount) {
+			SearchNode* node = nodes[index];	//nodesから注目ノードを取り出し
+			const size_t childCount = node->children.size();
+			SearchNode::State state = node->getState();
+
+			for (int i = 0; i < childCount; i++) {
+				kifu.push_back(kifu[0] + " " + node->children[i].move.toUSI());
+			}
+
+
+			if (childCount > 0) {
+				//state = SearchNode::State::Expanded;
+			}
+			//jn[index] = josekinode(index, state, node->move.binary(), node->mass, node->getEvaluation(), /*node->getOriginEval(),*/ childCount, childIndex);	//注目ノードをjnに収める
+			jfile << /*index << ", " <<*/ kifu[0] << std::endl;
+			jfile << "    mass " << node->mass << ", evalution " << node->getEvaluation() << std::endl;
+			jfile << "    children { ";
+			for (int i = 0; i < childCount; ++i) {	//子ノードをnodesに格納
+				nodes[childIndex++] = &(node->children[i]);
+				jfile << node->children[i].move.toUSI() << " ";
+			}
+			jfile << "}" << std::endl;
+
+			kifu.erase(kifu.begin());
+
+			//if (index < 20)
+			//for (int i = 0; i < kifu.size(); i++) {
+			//	std::cout << kifu[i] << " ";
+			//	std::cout << std::endl;
+			//}
+
+			++index;
+		}
+		jfile.close();
+	}
+
+
 	//書き出しファイルオープン
 	FILE* fp;
 	fopen_s(&fp, (option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_file")).c_str(), "wb");
@@ -64,6 +117,7 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	}*/
 	free(nodes);
 
+	//累積記録
 	outputRecord(SearchNode::getNodeCount(), beforeNode);
 
 	std::cout << "定跡書き出し完了" << std::endl;

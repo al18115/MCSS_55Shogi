@@ -1,7 +1,8 @@
 ﻿#include "pruning.h"
 #include <iostream>
 
-size_t Pruning::pruning(SearchNode* root) {
+size_t Pruning::pruning(SearchNode* root, double pruning_border) {
+	pruningBorder = pruning_border;
 	size_t r = 0;
 	std::cout << std::endl << "枝刈り前ノード数：" << SearchNode::getNodeCount() << std::endl;
 
