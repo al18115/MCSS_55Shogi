@@ -1,6 +1,7 @@
 ﻿#include "josekioutput.h"
 #include <iostream>
 #include <fstream>
+#include <queue>
 
 JosekiOutput::JosekiOutput(){
 	option.addOption("joseki_output_on", "check", "true");
@@ -64,39 +65,36 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		index = 0;
 		childIndex = 1;
 		nodes[0] = history.front();
-		std::vector<std::string> kifu;
-		kifu.push_back("startpos");
-		std::ofstream jfile(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_txtfile"));
+		std::queue<std::string> kifu;
+		kifu.push("startpos");
+		std::ofstream jfile/*(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_txtfile"))*/;
 		while (nodes[index] != NULL && index < nodeCount) {
+			if (index % 10000 == 0) {
+
+				jfile.open(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_folder") + "\\" + std::to_string(index / 10000) + option.getS("joseki_output_txtfile"));
+			}
 			SearchNode* node = nodes[index];	//nodesから注目ノードを取り出し
 			const size_t childCount = node->children.size();
 			SearchNode::State state = node->getState();
 
 			for (int i = 0; i < childCount; i++) {
-				kifu.push_back(kifu[0] + " " + node->children[i].move.toUSI());
+				kifu.push(kifu.front() + " " + node->children[i].move.toUSI());
 			}
 
-
-			if (childCount > 0) {
-				//state = SearchNode::State::Expanded;
-			}
-			//jn[index] = josekinode(index, state, node->move.binary(), node->mass, node->getEvaluation(), /*node->getOriginEval(),*/ childCount, childIndex);	//注目ノードをjnに収める
-			jfile << /*index << ", " <<*/ kifu[0] << std::endl;
-			jfile << "    mass " << node->mass << ", evalution " << node->getEvaluation() << std::endl;
-			jfile << "    children { ";
+			jfile << index << ", " << kifu.front() << std::endl;
+			jfile << "    Mass " << node->mass << ", Eval " << node->getEvaluation() << ", FinalMove " << node->move.toUSI() << std::endl;
+			jfile << "    Children { ";
 			for (int i = 0; i < childCount; ++i) {	//子ノードをnodesに格納
 				nodes[childIndex++] = &(node->children[i]);
 				jfile << node->children[i].move.toUSI() << " ";
 			}
 			jfile << "}" << std::endl;
 
-			kifu.erase(kifu.begin());
+			kifu.pop();
 
-			//if (index < 20)
-			//for (int i = 0; i < kifu.size(); i++) {
-			//	std::cout << kifu[i] << " ";
-			//	std::cout << std::endl;
-			//}
+			if (index % 10000 == 10000 - 1) {
+				jfile.close();
+			}
 
 			++index;
 		}
