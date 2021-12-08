@@ -9,7 +9,7 @@ JosekiOutput::JosekiOutput(){
 	option.addOption("joseki_output_file", "string", "joseki_output.bin");
 	option.addOption("joseki_output_infofile", "string", "joseki_output_info.txt");
 	option.addOption("joseki_output_text_on", "check", "false");
-	option.addOption("joseki_output_txtfile", "string", "joseki_output.txt");
+	option.addOption("joseki_output_text_folder", "string", "joseki_text");
 	option.addOption("joseki_backup_T_e", "string", "40");
 	option.addOption("joseki_backup_T_d", "string", "80");
 	option.addOption("joseki_pruning_on", "check", "true");
@@ -67,11 +67,11 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		nodes[0] = history.front();
 		std::queue<std::string> kifu;
 		kifu.push("startpos");
-		std::ofstream jfile/*(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_txtfile"))*/;
+		std::ofstream jfile;
 		while (nodes[index] != NULL && index < nodeCount) {
 			if (index % 10000 == 0) {
 
-				jfile.open(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_folder") + "\\" + std::to_string(index / 10000) + option.getS("joseki_output_txtfile"));
+				jfile.open(option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_text_folder") + "\\" + std::to_string(index / 10000) + ".txt");
 			}
 			SearchNode* node = nodes[index];	//nodesから注目ノードを取り出し
 			const size_t childCount = node->children.size();
