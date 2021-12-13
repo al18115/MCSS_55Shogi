@@ -76,7 +76,7 @@ size_t Pruning::partialPruning(SearchNode* node, std::vector<SearchNode*> &histo
 					else {
 						s = 0;
 					}
-					r += partialPruning(child, history, s * select, depth + 1);
+					r += partialPruning(child, history, s * select, depth + 1);//選択確率はselectを消去する
 				}
 			}
 			else {

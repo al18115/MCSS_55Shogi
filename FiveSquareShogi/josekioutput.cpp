@@ -78,7 +78,10 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 			SearchNode::State state = node->getState();
 
 			for (int i = 0; i < childCount; i++) {
-				kifu.push(kifu.front() + " " + node->children[i].move.toUSI());
+				std::string newKifu = kifu.front();
+				newKifu += " ";
+				newKifu += node->children[i].move.toUSI();
+				kifu.push(newKifu);
 			}
 
 			jfile << index << ", " << kifu.front() << std::endl;
