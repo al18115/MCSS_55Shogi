@@ -63,7 +63,19 @@ void Commander::execute(const std::string& enginename) {
 			commander.go_alive = false;
 			commander.info_alive = false;
 			commander.agents.pauseSearch();
-			commander.joseki.fin(commander.tree.getHistory());
+			if (tokens.size() < 2) {
+				commander.joseki.fin(commander.tree.getHistory());
+			}
+			else {
+				int result = 0;
+				if (tokens[1] == "win") {
+					result = 1;
+				}
+				else if (tokens[1] == "lose") {
+					result = -1;
+				}
+				commander.joseki.fin(commander.tree.getHistory(), result);
+			}
 			std::cout << "gameoverok" << std::endl;
 		}
 		else if (tokens[0] == "debugsetup") {

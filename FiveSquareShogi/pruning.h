@@ -6,7 +6,7 @@ class Pruning {
     //枝刈り
 public:
     //指定されたノードから下を全て枝刈りする。返り値は刈ったノードの数
-    size_t pruning(SearchNode* root, double pruning_border);
+    size_t pruning(SearchNode* root, double pruning_border_win, double pruning_border_lose, int result);
     //指定されたノードの探索深さ指標を基準とし、枝刈りを行う。
     static void pruningMass(SearchNode* node,double mass);
 private:
@@ -19,6 +19,7 @@ private:
     //double T_d = 100;
     double pruningBorder = 0.01;
     double pruningBorderEval = 50000;
+    bool resultWin = true;
     bool pruning_on = false;
     //枝刈りのタイプ。0は実現確率 1は深さ
     int pruning_type = 0;

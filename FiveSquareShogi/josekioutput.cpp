@@ -1,10 +1,9 @@
 ﻿#include "josekioutput.h"
 #include <iostream>
 #include <fstream>
-#include <queue>
 
 JosekiOutput::JosekiOutput(){
-	option.addOption("joseki_output_on", "check", "true");
+	option.addOption("joseki_output_on", "check", "false");
 	option.addOption("joseki_output_folder", "string", "joseki");
 	option.addOption("joseki_output_file", "string", "joseki_output.bin");
 	option.addOption("joseki_output_infofile", "string", "joseki_output_info.txt");
@@ -13,22 +12,29 @@ JosekiOutput::JosekiOutput(){
 	option.addOption("joseki_backup_T_e", "string", "40");
 	option.addOption("joseki_backup_T_d", "string", "80");
 	option.addOption("joseki_pruning_on", "check", "true");
-	option.addOption("joseki_pruning_border", "string", "0.01");
+	option.addOption("joseki_pruning_border_win", "string", "1");
+	option.addOption("joseki_pruning_border_lose", "string", "1");
+	option.addOption("joseki_max_size", "string", "10");
 }
 
 //定跡書き出し
-void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
+void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history, int result) {
 
+	size_t beforeNode = SearchNode::getNodeCount();
 
 	if (!outputInfo(history)) {
 		return;
 	}
 
-	size_t beforeNode = SearchNode::getNodeCount();
 	//枝刈り
-	if (option.getC("joseki_pruning_on")) {
-		pruning.pruning(history.front(), option.getD("joseki_pruning_border"));
+	if (option.getC("joseki_pruning_on") && option.getC("joseki_output_on")) {
+		pruning.pruning(history.front(), option.getD("joseki_pruning_border_win"), option.getD("joseki_pruning_border_lose"), result);
 	}
+
+
+	//累積記録
+	outputRecord(SearchNode::getNodeCount(), beforeNode);
+
 
 	std::cout << "定跡書き出し開始" << std::endl;
 
@@ -60,8 +66,24 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 		++index;
 	}
 
+	//書き出しファイルオープン
+	FILE* fp;
+
+	fopen_s(&fp, (option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_file")).c_str(), "wb");
+	if (fp == NULL) {
+		std::cout << "File Output Open Error" << std::endl;
+	}
+	else {
+		
+		fwrite(jn, sizeof(jn[0]), nodeCount, fp);	//一気に書き出し
+		fflush(fp);
+		fclose(fp);
+	}
+
+
 	//テキストファイル
 	if (option.getC("joseki_output_text_on")) {
+		std::cout << "テキストファイル書き出し開始" << std::endl;
 		index = 0;
 		childIndex = 1;
 		nodes[0] = history.front();
@@ -105,21 +127,12 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history) {
 	}
 
 
-	//書き出しファイルオープン
-	FILE* fp;
-	fopen_s(&fp, (option.getS("joseki_output_folder") + "\\" + option.getS("joseki_output_file")).c_str(), "wb");
-	fwrite(jn, sizeof(jn[0]), nodeCount, fp);	//一気に書き出し
-	fflush(fp);
-	fclose(fp);
-
 	free(jn);
 	/*for (int i = 0; i < nodeCount; ++i) {
 		free(nodes[i]);
 	}*/
 	free(nodes);
 
-	//累積記録
-	outputRecord(SearchNode::getNodeCount(), beforeNode);
 
 	std::cout << "定跡書き出し完了" << std::endl;
 
@@ -164,7 +177,7 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	ofs << "nodesize" << "," << sizeof(josekinode) << std::endl;
 	size_t fileSize = nodeCount * sizeof(josekinode);
 	size_t gigabyte = 1024 * 1024 * 1024;
-	size_t maxByte = 10 * gigabyte;
+	size_t maxByte = option.getI("joseki_max_size") * gigabyte;
 	ofs << "推定ファイルサイズ：" << std::to_string(fileSize) << "バイト(" << (double)fileSize / gigabyte << "ギガバイト)" << std::endl;
 	std::cout << "推定ファイルサイズ：" << std::to_string(fileSize) << "バイト" << std::endl;
 	std::cout << "推定ファイルサイズ：" << std::to_string((double)fileSize / gigabyte) << "ギガバイト" << std::endl;
@@ -190,6 +203,7 @@ void JosekiOutput::outputRecord(size_t size, size_t before)
 	if (file.is_open()) {
 		file << "定跡サイズ:" << size * sizeof(josekinode) << "byte 枝刈り前サイズ:" << before * sizeof(josekinode) << "byte" << std::endl;
 	}
+	file.close();
 }
 
 

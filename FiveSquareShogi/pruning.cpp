@@ -1,12 +1,23 @@
 ﻿#include "pruning.h"
 #include <iostream>
+#include <iomanip>
 
-size_t Pruning::pruning(SearchNode* root, double pruning_border) {
-	pruningBorder = pruning_border;
+size_t Pruning::pruning(SearchNode* root, double pruning_border_win, double pruning_border_lose, int result) {
+	if (result > 0) {
+		pruningBorder = pruning_border_win;
+	}
+	else if (result < 0) {
+		pruningBorder = pruning_border_lose;
+	}
+	else {
+		pruningBorder = (pruning_border_win + pruning_border_lose) / 2;
+	}
+
 	size_t r = 0;
 	std::cout << std::endl << "枝刈り前ノード数：" << SearchNode::getNodeCount() << std::endl;
 
 	std::cout << "枝刈りを行います" << std::endl;
+	std::cout << "枝刈り基準：" << std::scientific << std::setprecision(2) << std::uppercase << pruningBorder << " %" << std::endl;
 
 	std::vector<SearchNode*>history;
 	r = partialPruning(root, history, 1, 0);
@@ -114,13 +125,9 @@ bool Pruning::isPruning(SearchNode* node, double select, int depth, double backu
 		if (select < pruningBorder * 0.01) {
 			return true;
 		}
+
 		break;
-	case 1:
-		//深さがpruning_depth以下でなければ切り捨て
-		if (depth > pruning_depth) {
-			return true;
-		}
-		break;
+
 	}
 	return false;
 }

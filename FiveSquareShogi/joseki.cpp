@@ -39,10 +39,15 @@ void Joseki::init(SearchTree *tree){
 	}
 }
 
-void Joseki::fin(std::vector<SearchNode*>history){
+void Joseki::fin(std::vector<SearchNode*>history) {
+	fin(history, 0);
+}
+
+
+void Joseki::fin(std::vector<SearchNode*>history, int result){
 	if (option.getC("joseki_on")) {
 		output.backUp(history);
-		output.josekiOutput(history);
+		output.josekiOutput(history, result);
 	}
 }
 

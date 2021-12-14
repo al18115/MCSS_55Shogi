@@ -9,7 +9,7 @@ class JosekiOutput {
 public:
     JosekiOutput();
     //定跡書き出し
-    void josekiOutput(const std::vector<SearchNode*> const history);
+    void josekiOutput(const std::vector<SearchNode*> const history, int result);
     //末端からのバックアップ
     void backUp(std::vector<SearchNode*> history);
     JosekiOption option;

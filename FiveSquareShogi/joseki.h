@@ -24,6 +24,7 @@ public:
 
     void init(SearchTree* tree);
     void fin(std::vector<SearchNode*>history);
+    void fin(std::vector<SearchNode*>history, int result);
     Move getBestMove(std::vector<SearchNode*>history);
     //JosekiByKyokumen josekiByKyokumen;
 private:
