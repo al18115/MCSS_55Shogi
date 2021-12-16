@@ -33,7 +33,7 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history, in
 
 
 	//累積記録
-	outputRecord(SearchNode::getNodeCount(), beforeNode);
+	outputRecord(SearchNode::getNodeCount(), beforeNode, result);
 
 
 	std::cout << "定跡書き出し開始" << std::endl;
@@ -194,14 +194,24 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	return true;
 }
 
-void JosekiOutput::outputRecord(size_t size, size_t before)
+void JosekiOutput::outputRecord(size_t size, size_t before, int result)
 {
 	//累積記録用
 	std::fstream file;
 	std::string file_name = option.getS("joseki_output_folder") + "\\joseki_record.txt";
 	file.open(file_name, std::ios_base::app | std::ios_base::in);
 	if (file.is_open()) {
-		file << "定跡サイズ:" << size * sizeof(josekinode) << "byte 枝刈り前サイズ:" << before * sizeof(josekinode) << "byte" << std::endl;
+		file << "定跡サイズ " << size * sizeof(josekinode) << " byte 枝刈り前サイズ " << before * sizeof(josekinode) << "byte 勝敗 ";
+		if (result > 0) {
+			file << "win";
+		}
+		else if (result < 0) {
+			file << "lose";
+		}
+		else {
+			file << "draw";
+		}
+		file << std::endl;
 	}
 	file.close();
 }
