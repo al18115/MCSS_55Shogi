@@ -28,7 +28,7 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history, in
 
 	//枝刈り
 	if (option.getC("joseki_pruning_on") && option.getC("joseki_output_on")) {
-		pruning.pruning(history.front(), option.getD("joseki_pruning_border_win"), option.getD("joseki_pruning_border_lose"), result);
+		pruning.pruning(history.front(), option, result);
 	}
 
 
@@ -181,13 +181,13 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	ofs << "推定ファイルサイズ：" << std::to_string(fileSize) << "バイト(" << (double)fileSize / gigabyte << "ギガバイト)" << std::endl;
 	std::cout << "推定ファイルサイズ：" << std::to_string(fileSize) << "バイト" << std::endl;
 	std::cout << "推定ファイルサイズ：" << std::to_string((double)fileSize / gigabyte) << "ギガバイト" << std::endl;
-	if (fileSize >= maxByte) {
-		std::cout << "書き出そうとしているファイルサイズが大きすぎます。" << std::endl;
-		std::cout << "最大サイズ：" << maxByte << std::endl;
-		std::cout << "出力を中止します。" << std::endl;
-		ofs.close();
-		return false;
-	}
+	//if (fileSize >= maxByte) {
+	//	std::cout << "書き出そうとしているファイルサイズが大きすぎます。" << std::endl;
+	//	std::cout << "最大サイズ：" << maxByte << std::endl;
+	//	std::cout << "出力を中止します。" << std::endl;
+	//	ofs.close();
+	//	return false;
+	//}
 
 	std::cout << "情報出力完了" << std::endl;
 

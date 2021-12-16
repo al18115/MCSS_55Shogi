@@ -1,12 +1,14 @@
 ﻿#pragma once
 #include "node.h"
 #include "tree.h"
+#include "josekioption.h"
+#include "josekinode.h"
 
 class Pruning {
     //枝刈り
 public:
     //指定されたノードから下を全て枝刈りする。返り値は刈ったノードの数
-    size_t pruning(SearchNode* root, double pruning_border_win, double pruning_border_lose, int result);
+    size_t pruning(SearchNode* root, JosekiOption option, int result);
     //指定されたノードの探索深さ指標を基準とし、枝刈りを行う。
     static void pruningMass(SearchNode* node,double mass);
 private:

@@ -2,31 +2,41 @@
 #include <iostream>
 #include <iomanip>
 
-size_t Pruning::pruning(SearchNode* root, double pruning_border_win, double pruning_border_lose, int result) {
+size_t Pruning::pruning(SearchNode* root, JosekiOption option, int result) {
+
+	double pruning_border = 1.0;
 	if (result > 0) {
-		pruningBorder = pruning_border_win;
+		pruning_border = option.getD("joseki_pruning_border_win");
 	}
 	else if (result < 0) {
-		pruningBorder = pruning_border_lose;
+		pruning_border = option.getD("joseki_pruning_border_lose");
 	}
 	else {
-		pruningBorder = (pruning_border_win + pruning_border_lose) / 2;
+		pruning_border = (option.getD("joseki_pruning_border_win") + option.getD("joseki_pruning_border_lose")) / 2;
 	}
-
+	pruningBorder = pruning_border;
+	size_t gigaByte = 1024 * 1024 * 1024;
+	size_t maxSize = option.getI("joseki_max_size") * gigaByte;
+	size_t r0 = 0;
 	size_t r = 0;
-	std::cout << std::endl << "枝刈り前ノード数：" << SearchNode::getNodeCount() << std::endl;
+	size_t nodeSize = 0;
 
-	std::cout << "枝刈りを行います" << std::endl;
-	std::cout << "枝刈り基準：" << std::scientific << std::setprecision(2) << std::uppercase << pruningBorder << " %" << std::endl;
+	do {
+		std::cout << std::endl << "枝刈り前ノード数：" << SearchNode::getNodeCount() << std::endl;
 
-	std::vector<SearchNode*>history;
-	r = partialPruning(root, history, 1, 0);
+		std::cout << "枝刈りを行います" << std::endl;
+		std::cout << "枝刈り基準：" << std::scientific << std::setprecision(2) << std::uppercase << pruningBorder << " %" << std::endl;
 
-	std::cout << "枝刈り　ノード数：" << r << std::endl;
+		std::vector<SearchNode*>history;
+		r = partialPruning(root, history, 1, 0);
+		r0 += r;
+		std::cout << "枝刈り　ノード数：" << r << std::endl;
 
-	std::cout << "枝刈り後ノード数：" << SearchNode::getNodeCount() << std::endl << std::endl;
-
-	return r;
+		std::cout << "枝刈り後ノード数：" << SearchNode::getNodeCount() << std::endl << std::endl;
+		nodeSize = SearchNode::getNodeCount() * sizeof(josekinode);
+		pruningBorder += pruning_border;
+	} while (nodeSize > maxSize);
+	return r0;
 }
 
 void Pruning::pruningMass(SearchNode* node, double mass){

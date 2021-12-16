@@ -26,6 +26,7 @@ setoption name joseki_output_on is true
 setoption name joseki_input_on is true
 setoption name joseki_input_infofile is joseki_info.txt
 setoption name joseki_input_file is joseki.bin
+setoption name joseki_pruning_on is false
 isready
-position startpos moves 2e4c
+position startpos
 go 0 0 0 0
