@@ -201,7 +201,7 @@ void JosekiOutput::outputRecord(size_t size, size_t before, int result)
 	std::string file_name = option.getS("joseki_output_folder") + "\\joseki_record.txt";
 	file.open(file_name, std::ios_base::app | std::ios_base::in);
 	if (file.is_open()) {
-		file << "定跡サイズ " << size * sizeof(josekinode) << " byte 枝刈り前サイズ " << before * sizeof(josekinode) << "byte 勝敗 ";
+		file << "定跡サイズ " << size * sizeof(josekinode) << " byte 枝刈り前サイズ " << before * sizeof(josekinode) << " byte 勝敗 ";
 		if (result > 0) {
 			file << "win";
 		}
