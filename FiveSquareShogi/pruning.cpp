@@ -36,7 +36,9 @@ size_t Pruning::pruning(SearchNode* root, JosekiOption option, int result) {
 		nodeSize = SearchNode::getNodeCount() * sizeof(josekinode);
 
 		//枝刈り基準を厳しくする
-		pruningBorder += pruning_border * 10;
+		pruningBorder += pruning_border * 5;
+
+		//容量が基準よりも多かったらもう一度枝刈りする
 	} while (nodeSize > maxSize);
 	return r0;
 }

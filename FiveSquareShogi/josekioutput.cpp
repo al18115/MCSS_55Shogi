@@ -26,6 +26,12 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history, in
 		return;
 	}
 
+	std::string kifu = "";
+	for (int i = 0; i < history.size(); i++) {
+		 kifu += history[i]->move.toUSI();
+		 kifu += " ";
+	}
+
 	//枝刈り
 	if (option.getC("joseki_pruning_on") && option.getC("joseki_output_on")) {
 		pruning.pruning(history.front(), option, result);
@@ -33,7 +39,7 @@ void JosekiOutput::josekiOutput(const std::vector<SearchNode*> const history, in
 
 
 	//累積記録
-	outputRecord(SearchNode::getNodeCount(), beforeNode, result);
+	outputRecord(SearchNode::getNodeCount(), beforeNode, result, kifu);
 
 
 	std::cout << "定跡書き出し開始" << std::endl;
@@ -194,7 +200,7 @@ bool JosekiOutput::outputInfo(const std::vector<SearchNode*> const history){
 	return true;
 }
 
-void JosekiOutput::outputRecord(size_t size, size_t before, int result)
+void JosekiOutput::outputRecord(size_t size, size_t before, int result, std::string kifu)
 {
 	//累積記録用
 	std::fstream file;
@@ -214,6 +220,16 @@ void JosekiOutput::outputRecord(size_t size, size_t before, int result)
 		file << std::endl;
 	}
 	file.close();
+
+	//棋譜記録用
+	std::fstream file_kifu;
+	std::string file_name_kifu = option.getS("joseki_output_folder") + "\\joseki_kifu.txt";
+	file_kifu.open(file_name_kifu, std::ios_base::app | std::ios_base::in);
+	if (file_kifu.is_open()) {
+		file_kifu << kifu << std::endl;
+	}
+	file_kifu.close();
+
 }
 
 
