@@ -34,7 +34,9 @@ size_t Pruning::pruning(SearchNode* root, JosekiOption option, int result) {
 
 		std::cout << "枝刈り後ノード数：" << SearchNode::getNodeCount() << std::endl << std::endl;
 		nodeSize = SearchNode::getNodeCount() * sizeof(josekinode);
-		pruningBorder += pruning_border;
+
+		//枝刈り基準を厳しくする
+		pruningBorder += pruning_border * 10;
 	} while (nodeSize > maxSize);
 	return r0;
 }
