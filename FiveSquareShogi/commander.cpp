@@ -259,6 +259,12 @@ void Commander::gameInit() {
 void Commander::go(const std::vector<std::string>& tokens) {
 	//局面を進める直前に探索木を書き出す。
 	//joseki.josekiByKyokumen.inputQueue(tree);
+	if (joseki.option.getC("joseki_sokusashi_on")){
+		if (!tree.getHistory().empty() && !tree.getRoot()->children.empty() && tree.getRoot()->getBestChild()->mass >= 10) {
+			chakushu(tree.getRoot()->getBestChild());
+			return;
+		}
+	}
 	const Kyokumen& kyokumen = tree.getRootPlayer().kyokumen;
 	tree.evaluationcount = 0ull;
 	info_prev_evcount = 0ull;

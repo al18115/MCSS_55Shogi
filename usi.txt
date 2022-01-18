@@ -1,3 +1,4 @@
+//対局して定跡とテキストを書き出す
 setoption name leave_branchNode is true
 setoption name joseki_output_text_on is true
 setoption name joseki_output_on is true
@@ -5,7 +6,7 @@ isready
 position startpos
 go 0 0 0 0
 
-
+//後手番で対局して定跡とテキストを書き出す
 setoption name leave_branchNode is true
 setoption name joseki_output_text_on is true
 setoption name joseki_output_on is true
@@ -13,13 +14,14 @@ isready
 position startpos moves 2e4c
 go 0 0 0 0
 
+//対局してテキストなしで書き出す
 setoption name leave_branchNode is true
 setoption name joseki_output_on is true
 isready
 position startpos
 go 0 0 0 0
 
-
+//定跡をテキストに変換する
 setoption name leave_branchNode is true
 setoption name joseki_output_text_on is true
 setoption name joseki_output_on is true
@@ -27,16 +29,18 @@ setoption name joseki_input_on is true
 setoption name joseki_input_infofile is joseki_info.txt
 setoption name joseki_input_file is joseki.bin
 setoption name joseki_pruning_on is false
+setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\12
 isready
 position startpos
-go 0 0 0 0
+gameover
 
 
 setoption name leave_branchNode is true
-setoption name joseki_input_on is true
-setoption name joseki_input_infofile is joseki_info.txt
+setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\12
 setoption name joseki_input_file is joseki.bin
-setoption name joseki_pruning_on is false
+setoption name joseki_input_infofile is joseki_info.txt
+setoption name joseki_input_on is true
 isready
 position startpos
-go 0 0 0 0
+go btime 0 wtime 0 byoyomi 1000
+
