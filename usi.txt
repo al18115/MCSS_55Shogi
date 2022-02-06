@@ -29,14 +29,14 @@ setoption name joseki_input_on is true
 setoption name joseki_input_infofile is joseki_info.txt
 setoption name joseki_input_file is joseki.bin
 setoption name joseki_pruning_on is false
-setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\12
+setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\15-500
 isready
 position startpos
 gameover
 
-
+//定跡で探索
 setoption name leave_branchNode is true
-setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\12
+setoption name joseki_input_folder is C:\Users\yuasa\Documents\WinBoard\Shibaura\joseki\24-100
 setoption name joseki_input_file is joseki.bin
 setoption name joseki_input_infofile is joseki_info.txt
 setoption name joseki_input_on is true
